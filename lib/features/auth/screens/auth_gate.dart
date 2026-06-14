@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../dashboard/screens/manager_home_screen.dart';
 import '../../dashboard/screens/owner_home_screen.dart';
 import '../../dashboard/screens/seller_home_screen.dart';
 import '../data/auth_repository.dart';
@@ -210,7 +211,7 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     if (_profile!.isOwner) return OwnerHomeScreen(profile: _profile!);
-    // Managers use the seller home screen until Phase 4 adds dedicated manager routing.
+    if (_profile!.isManager) return ManagerHomeScreen(profile: _profile!);
     return SellerHomeScreen(profile: _profile!);
   }
 }
