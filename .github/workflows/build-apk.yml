@@ -38,7 +38,7 @@ jobs:
         run: flutter pub get
 
 
-- name: Generate app icon
+      - name: Generate app icon
         run: dart run flutter_launcher_icons
       - name: Build debug APK
         run: |
