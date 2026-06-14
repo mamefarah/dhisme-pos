@@ -14,6 +14,8 @@
 -- ─── 1. Products RLS ──────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "owner products insert" ON public.products;
 DROP POLICY IF EXISTS "owner products update" ON public.products;
+DROP POLICY IF EXISTS "owner manager products insert" ON public.products;
+DROP POLICY IF EXISTS "owner manager products update" ON public.products;
 
 CREATE POLICY "owner manager products insert"
   ON public.products FOR INSERT TO authenticated
@@ -32,6 +34,8 @@ CREATE POLICY "owner manager products update"
 -- ─── 2. Categories RLS ───────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "owner categories insert" ON public.categories;
 DROP POLICY IF EXISTS "owner categories update" ON public.categories;
+DROP POLICY IF EXISTS "owner manager categories insert" ON public.categories;
+DROP POLICY IF EXISTS "owner manager categories update" ON public.categories;
 
 CREATE POLICY "owner manager categories insert"
   ON public.categories FOR INSERT TO authenticated
@@ -49,6 +53,7 @@ CREATE POLICY "owner manager categories update"
 
 -- ─── 3. Customers update RLS ─────────────────────────────────────────────────
 DROP POLICY IF EXISTS "customers update owner" ON public.customers;
+DROP POLICY IF EXISTS "owner manager customers update" ON public.customers;
 
 CREATE POLICY "owner manager customers update"
   ON public.customers FOR UPDATE TO authenticated
