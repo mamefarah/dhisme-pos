@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/models/app_profile.dart';
+import '../../suppliers/screens/suppliers_screen.dart';
 import '../data/product_repository.dart';
 import '../models/product.dart';
 import 'product_form_screen.dart';
@@ -35,7 +36,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
         actions: [
           if (widget.profile.isOwner || widget.profile.isManager)
             IconButton(
+              icon: const Icon(Icons.local_shipping_outlined),
+              tooltip: 'Suppliers',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => SuppliersScreen(profile: widget.profile)),
+              ),
+            ),
+          if (widget.profile.isOwner || widget.profile.isManager)
+            IconButton(
               icon: const Icon(Icons.add),
+              tooltip: 'Add product',
               onPressed: () async {
                 await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductFormScreen(profile: widget.profile)));
                 _reload();
