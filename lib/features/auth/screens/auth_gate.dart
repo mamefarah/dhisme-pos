@@ -76,25 +76,31 @@ class _AuthGateState extends State<AuthGate> {
         return;
       }
 
-      // Profile is null. Check if this user just signed up as a new owner.
-      // The signup flow stores metadata so we can complete registration even
-      // after an email-confirmation round-trip.
+      // Profile is null. Check if this user signed up and needs profile creation.
       final meta = sb.auth.currentUser?.userMetadata;
-      if (meta?['signup_type'] == 'owner') {
+      final signupType = meta?['signup_type'] as String?;
+
+      if (signupType == 'owner' || signupType == 'employee') {
         if (mounted) setState(() => _registering = true);
         try {
-          await _repo.registerOwner(
-            fullName: (meta!['full_name'] as String?) ?? '',
-            storeName: (meta['store_name'] as String?) ?? '',
-            phone: meta['phone'] as String?,
-            storePhone: meta['store_phone'] as String?,
-            storeAddress: meta['store_address'] as String?,
-          );
-          // Reload — profile now exists.
+          if (signupType == 'owner') {
+            await _repo.registerOwner(
+              fullName: (meta!['full_name'] as String?) ?? '',
+              storeName: (meta['store_name'] as String?) ?? '',
+              phone: meta['phone'] as String?,
+              storePhone: meta['store_phone'] as String?,
+              storeAddress: meta['store_address'] as String?,
+            );
+          } else {
+            await _repo.registerWithInvite(
+              fullName: (meta!['full_name'] as String?) ?? '',
+              inviteCode: (meta['invite_code'] as String?) ?? '',
+              phone: meta['phone'] as String?,
+            );
+          }
           final created = await _repo.currentProfile();
           if (mounted) setState(() { _profile = created; _loading = false; _registering = false; });
         } catch (e) {
-          // If profile already exists (race / retry), just reload.
           final existing = await _repo.currentProfile();
           if (existing != null) {
             if (mounted) setState(() { _profile = existing; _loading = false; _registering = false; });
@@ -103,8 +109,7 @@ class _AuthGateState extends State<AuthGate> {
               setState(() {
                 _loading = false;
                 _registering = false;
-                _profileError = 'Could not finish creating your account. '
-                    'Please tap Try Again, or contact support if this keeps happening.';
+                _profileError = _describeRegistrationError(e, signupType!);
               });
             }
           }
@@ -119,6 +124,22 @@ class _AuthGateState extends State<AuthGate> {
         setState(() { _loading = false; _profileError = _describeProfileError(e); });
       }
     }
+  }
+
+  String _describeRegistrationError(Object error, String signupType) {
+    final msg = error.toString().toLowerCase();
+    if (signupType == 'employee') {
+      if (msg.contains('invalid or has expired')) {
+        return 'The invite code is invalid or has expired.\n'
+            'Ask the store owner to generate a new invite code and try again.';
+      }
+      if (msg.contains('already exists')) {
+        return 'An account profile already exists for this login.\nTry logging in directly.';
+      }
+      return 'Could not join the store. Please tap Try Again, or ask the store owner for help.';
+    }
+    return 'Could not finish creating your account. '
+        'Please tap Try Again, or contact support if this keeps happening.';
   }
 
   String _describeProfileError(Object error) {
@@ -184,7 +205,12 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
+    if (!_profile!.isActive) {
+      return _AccountDeactivatedScreen(onLogout: _repo.signOut);
+    }
+
     if (_profile!.isOwner) return OwnerHomeScreen(profile: _profile!);
+    // Managers use the seller home screen until Phase 4 adds dedicated manager routing.
     return SellerHomeScreen(profile: _profile!);
   }
 }
@@ -277,6 +303,46 @@ class _ProfileMissingScreen extends StatelessWidget {
               ),
             ),
             const Spacer(),
+            FilledButton.icon(
+              onPressed: onLogout,
+              icon: const Icon(Icons.logout),
+              label: const Text('Logout'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AccountDeactivatedScreen extends StatelessWidget {
+  const _AccountDeactivatedScreen({required this.onLogout});
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(Icons.block_outlined, size: 72, color: Colors.red),
+            const SizedBox(height: 24),
+            const Text(
+              'Account Deactivated',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Your account has been deactivated by the store owner.\n'
+              'Contact the store owner to restore access.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.black54),
+            ),
+            const SizedBox(height: 40),
             FilledButton.icon(
               onPressed: onLogout,
               icon: const Icon(Icons.logout),
