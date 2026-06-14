@@ -33,7 +33,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       appBar: AppBar(
         title: const Text('Products & Stock'),
         actions: [
-          if (widget.profile.isOwner)
+          if (widget.profile.isOwner || widget.profile.isManager)
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () async {
@@ -71,7 +71,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text('Stock: ${p.currentStock} ${p.unit} • Min: ${p.minimumStock} • ${money(p.sellingPrice)}'),
                         trailing: p.isLowStock ? const Icon(Icons.warning_amber, color: Colors.orange) : null,
-                        onTap: widget.profile.isOwner
+                        onTap: (widget.profile.isOwner || widget.profile.isManager)
                             ? () async {
                                 await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductFormScreen(profile: widget.profile, product: p)));
                                 _reload();

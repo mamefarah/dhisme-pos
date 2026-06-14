@@ -5,6 +5,7 @@ class AppProfile {
     required this.fullName,
     required this.role,
     this.phone,
+    this.isActive = true,
   });
 
   final String id;
@@ -12,8 +13,10 @@ class AppProfile {
   final String fullName;
   final String role;
   final String? phone;
+  final bool isActive;
 
   bool get isOwner => role == 'owner';
+  bool get isManager => role == 'manager';
   bool get isSeller => role == 'seller';
 
   factory AppProfile.fromMap(Map<String, dynamic> map) {
@@ -23,6 +26,7 @@ class AppProfile {
       fullName: map['full_name'] as String,
       role: map['role'] as String,
       phone: map['phone'] as String?,
+      isActive: map['is_active'] as bool? ?? true,
     );
   }
 }
