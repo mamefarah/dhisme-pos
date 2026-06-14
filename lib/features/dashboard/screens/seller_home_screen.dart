@@ -1,0 +1,47 @@
+import 'package:flutter/material.dart';
+import '../../auth/models/app_profile.dart';
+import '../../cash_closing/screens/submit_cash_closing_screen.dart';
+import '../../customers/screens/customers_screen.dart';
+import '../../products/screens/products_screen.dart';
+import '../../sales/screens/pos_screen.dart';
+import '../../settings/screens/settings_screen.dart';
+import 'dashboard_screen.dart';
+
+class SellerHomeScreen extends StatefulWidget {
+  const SellerHomeScreen({super.key, required this.profile});
+  final AppProfile profile;
+
+  @override
+  State<SellerHomeScreen> createState() => _SellerHomeScreenState();
+}
+
+class _SellerHomeScreenState extends State<SellerHomeScreen> {
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final screens = [
+      DashboardScreen(profile: widget.profile),
+      PosScreen(profile: widget.profile),
+      ProductsScreen(profile: widget.profile),
+      CustomersScreen(profile: widget.profile),
+      SubmitCashClosingScreen(profile: widget.profile),
+      SettingsScreen(profile: widget.profile),
+    ];
+    return Scaffold(
+      body: screens[_index],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.point_of_sale), label: 'POS'),
+          NavigationDestination(icon: Icon(Icons.inventory_2_outlined), label: 'Products'),
+          NavigationDestination(icon: Icon(Icons.people_outline), label: 'Customers'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Close'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+        ],
+      ),
+    );
+  }
+}
