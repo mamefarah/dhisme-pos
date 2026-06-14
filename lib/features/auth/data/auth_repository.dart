@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../core/services/supabase_service.dart';
 import '../models/app_profile.dart';
 
@@ -15,4 +17,45 @@ class AuthRepository {
     if (data == null) return null;
     return AppProfile.fromMap(data);
   }
+
+  /// Creates a Supabase auth user. Stores owner registration data in user
+  /// metadata so it survives an email-confirmation round-trip.
+  Future<AuthResponse> signUp({
+    required String email,
+    required String password,
+    required String fullName,
+    required String storeName,
+    String? phone,
+    String? storePhone,
+    String? storeAddress,
+  }) =>
+      sb.auth.signUp(
+        email: email.trim(),
+        password: password,
+        data: {
+          'full_name': fullName.trim(),
+          'store_name': storeName.trim(),
+          if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+          if (storePhone != null && storePhone.trim().isNotEmpty) 'store_phone': storePhone.trim(),
+          if (storeAddress != null && storeAddress.trim().isNotEmpty) 'store_address': storeAddress.trim(),
+          'signup_type': 'owner',
+        },
+      );
+
+  /// Creates the store and owner profile rows via a SECURITY DEFINER RPC.
+  /// Safe to call only when the user is authenticated.
+  Future<void> registerOwner({
+    required String fullName,
+    required String storeName,
+    String? phone,
+    String? storePhone,
+    String? storeAddress,
+  }) =>
+      sb.rpc('register_owner', params: {
+        'p_full_name': fullName,
+        'p_store_name': storeName,
+        'p_phone': phone,
+        'p_store_phone': storePhone,
+        'p_store_address': storeAddress,
+      });
 }

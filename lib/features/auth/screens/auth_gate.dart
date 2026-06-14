@@ -22,6 +22,7 @@ class _AuthGateState extends State<AuthGate> {
   bool _loading = true;
   AppProfile? _profile;
   String? _profileError;
+  bool _registering = false;
 
   @override
   void initState() {
@@ -68,7 +69,51 @@ class _AuthGateState extends State<AuthGate> {
 
     try {
       final profile = await _repo.currentProfile();
-      if (mounted) setState(() { _profile = profile; _loading = false; });
+
+      // Profile exists — normal login path.
+      if (profile != null) {
+        if (mounted) setState(() { _profile = profile; _loading = false; });
+        return;
+      }
+
+      // Profile is null. Check if this user just signed up as a new owner.
+      // The signup flow stores metadata so we can complete registration even
+      // after an email-confirmation round-trip.
+      final meta = sb.auth.currentUser?.userMetadata;
+      if (meta?['signup_type'] == 'owner') {
+        if (mounted) setState(() => _registering = true);
+        try {
+          await _repo.registerOwner(
+            fullName: (meta!['full_name'] as String?) ?? '',
+            storeName: (meta['store_name'] as String?) ?? '',
+            phone: meta['phone'] as String?,
+            storePhone: meta['store_phone'] as String?,
+            storeAddress: meta['store_address'] as String?,
+          );
+          // Reload — profile now exists.
+          final created = await _repo.currentProfile();
+          if (mounted) setState(() { _profile = created; _loading = false; _registering = false; });
+        } catch (e) {
+          // If profile already exists (race / retry), just reload.
+          final existing = await _repo.currentProfile();
+          if (existing != null) {
+            if (mounted) setState(() { _profile = existing; _loading = false; _registering = false; });
+          } else {
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _registering = false;
+                _profileError = 'Could not finish creating your account. '
+                    'Please tap Try Again, or contact support if this keeps happening.';
+              });
+            }
+          }
+        }
+        return;
+      }
+
+      // Profile truly missing for a non-signup user (e.g. employee with no profile row).
+      if (mounted) setState(() { _profile = null; _loading = false; });
     } catch (e) {
       if (mounted) {
         setState(() { _loading = false; _profileError = _describeProfileError(e); });
@@ -104,7 +149,20 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              if (_registering) ...[
+                const SizedBox(height: 16),
+                const Text('Setting up your store…', style: TextStyle(color: Colors.black54)),
+              ],
+            ],
+          ),
+        ),
+      );
     }
 
     if (sb.auth.currentSession == null) {
