@@ -3,7 +3,9 @@ name: Build Dhisme POS Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
 
 jobs:
   build-apk:
@@ -17,7 +19,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -37,9 +39,9 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
-
       - name: Generate app icon
         run: dart run flutter_launcher_icons
+
       - name: Build debug APK
         run: |
           flutter build apk --debug \
