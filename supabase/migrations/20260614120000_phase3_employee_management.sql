@@ -38,7 +38,8 @@ CREATE INDEX IF NOT EXISTS idx_store_invites_store
 -- ─── 3. RLS for store_invites ─────────────────────────────────────────────────
 ALTER TABLE public.store_invites ENABLE ROW LEVEL SECURITY;
 
--- Only the store owner can list invite codes.
+DROP POLICY IF EXISTS "invites read owner" ON public.store_invites;
+
 CREATE POLICY "invites read owner"
   ON public.store_invites FOR SELECT TO authenticated
   USING (store_id = public.current_user_store_id()
