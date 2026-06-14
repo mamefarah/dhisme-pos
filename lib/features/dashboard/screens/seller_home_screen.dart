@@ -61,7 +61,7 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
           NavigationDestination(
             icon: Icon(Icons.people_outline),
             selectedIcon: Icon(Icons.people),
-            label: 'Customers',
+            label: 'Clients',
           ),
           NavigationDestination(
             icon: Icon(Icons.payments_outlined),

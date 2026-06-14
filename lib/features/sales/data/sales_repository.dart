@@ -42,34 +42,33 @@ class SalesRepository {
     final data = await sb
         .from('sales')
         .select(
-          'id, invoice_no, total_amount, payment_method, status, created_at, '
-          'profiles(full_name), customers(name)',
+          'id, invoice_no, total_amount, subtotal, discount, '
+          'sale_type, payment_status, status, created_at, '
+          'profiles!seller_id(full_name), customers!customer_id(name)',
         )
         .order('created_at', ascending: false)
         .limit(limit);
     return List<Map<String, dynamic>>.from(data as List);
   }
 
-  /// Fetches a single sale with its line items and product details for the receipt.
-  /// Returns null if the sale is not found or if the DB structure does not support
-  /// the nested join (graceful degradation — caller handles null items).
+  /// Fetches a single sale with its line items for the receipt.
+  /// Returns null if the sale is not found (caller handles null).
   Future<Map<String, dynamic>?> fetchSaleDetails(String saleId) async {
     try {
       final data = await sb
           .from('sales')
           .select(
-            '*, profiles(full_name), customers(name), '
-            'sale_items(*, products(name, unit))',
+            '*, profiles!seller_id(full_name), customers!customer_id(name), '
+            'sale_items(id, product_name, unit, quantity, unit_price, total_price)',
           )
           .eq('id', saleId)
           .maybeSingle();
       return data;
     } catch (_) {
-      // Fallback: fetch without sale_items if the nested join fails
       try {
         final data = await sb
             .from('sales')
-            .select('*, profiles(full_name), customers(name)')
+            .select('*, profiles!seller_id(full_name), customers!customer_id(name)')
             .eq('id', saleId)
             .maybeSingle();
         return data;

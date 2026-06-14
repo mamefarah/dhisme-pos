@@ -101,12 +101,13 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   double get _discount => (_sale?['discount'] as num?)?.toDouble() ?? 0;
 
   String get _paymentLabel {
-    switch (_sale?['payment_method'] as String?) {
-      case 'cash':         return 'Cash';
-      case 'bank':         return 'Bank transfer';
-      case 'mobile_money': return 'Mobile money';
-      case 'credit_request': return 'Credit (approved)';
-      default: return _sale?['payment_method'] as String? ?? '—';
+    final saleType = _sale?['sale_type'] as String?;
+    final paymentStatus = _sale?['payment_status'] as String?;
+    switch (saleType) {
+      case 'cash':    return 'Cash';
+      case 'credit':  return paymentStatus == 'paid' ? 'Credit (paid)' : 'Credit';
+      case 'partial': return 'Partial payment';
+      default:        return saleType ?? '—';
     }
   }
 
@@ -123,10 +124,14 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   }
 
   String _itemName(Map item) =>
-      (item['products'] as Map?)?['name'] as String? ?? 'Unknown item';
+      item['product_name'] as String? ??
+      (item['products'] as Map?)?['name'] as String? ??
+      'Unknown item';
 
   String _itemUnit(Map item) =>
-      (item['products'] as Map?)?['unit'] as String? ?? '';
+      item['unit'] as String? ??
+      (item['products'] as Map?)?['unit'] as String? ??
+      '';
 
   double _itemQty(Map item) =>
       ((item['quantity'] ?? item['qty'] ?? 0) as num).toDouble();

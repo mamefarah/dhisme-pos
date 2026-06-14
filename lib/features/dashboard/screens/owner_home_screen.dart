@@ -56,7 +56,7 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
           NavigationDestination(
             icon: Icon(Icons.people_outline),
             selectedIcon: Icon(Icons.people),
-            label: 'Customers',
+            label: 'Clients',
           ),
           NavigationDestination(
             icon: Icon(Icons.approval_outlined),
