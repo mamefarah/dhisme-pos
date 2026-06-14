@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/dates.dart';
+import '../../../core/utils/errors.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/models/app_profile.dart';
@@ -26,7 +27,23 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       await _repo.decide(id, decision);
       _reload();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Decision failed: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                friendlyError(
+                  e,
+                  fallback: 'Could not process this decision. Please try again.',
+                ),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+      }
     }
   }
 

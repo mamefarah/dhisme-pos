@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
@@ -13,5 +15,6 @@ Future<void> main() async {
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   }
 
+  FlutterNativeSplash.remove();
   runApp(const DhismePosApp(isConfigured: supabaseUrl != '' && supabaseAnonKey != ''));
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/errors.dart';
 import '../../auth/models/app_profile.dart';
 import '../data/product_repository.dart';
 import '../models/product.dart';
@@ -65,7 +66,20 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                friendlyError(e, fallback: 'Save failed. Please check your information and try again.'),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

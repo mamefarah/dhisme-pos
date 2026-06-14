@@ -39,6 +39,9 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
+      - name: Generate splash screen
+        run: dart run flutter_native_splash:create
+
       - name: Generate app icon
         run: dart run flutter_launcher_icons
 
