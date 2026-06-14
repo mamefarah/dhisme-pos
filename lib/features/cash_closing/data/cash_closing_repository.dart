@@ -7,7 +7,7 @@ class CashClosingRepository {
   }
 
   Future<List<Map<String, dynamic>>> listClosings() async {
-    final data = await sb.from('daily_cash_closings').select('*, profiles(full_name)').order('created_at', ascending: false).limit(100);
+    final data = await sb.from('daily_cash_closings').select('*, profiles!seller_id(full_name)').order('created_at', ascending: false).limit(100);
     return List<Map<String, dynamic>>.from(data as List);
   }
 

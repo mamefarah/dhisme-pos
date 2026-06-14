@@ -118,17 +118,17 @@ class _SaleTile extends StatelessWidget {
   }
 
   String get _paymentLabel {
-    switch (sale['payment_method'] as String?) {
+    final saleType = sale['sale_type'] as String?;
+    final paymentStatus = sale['payment_status'] as String?;
+    switch (saleType) {
       case 'cash':
         return 'Cash';
-      case 'bank':
-        return 'Bank transfer';
-      case 'mobile_money':
-        return 'Mobile money';
-      case 'credit_request':
-        return 'Credit';
+      case 'credit':
+        return paymentStatus == 'paid' ? 'Credit (paid)' : 'Credit';
+      case 'partial':
+        return 'Partial';
       default:
-        return sale['payment_method'] as String? ?? '—';
+        return saleType ?? '—';
     }
   }
 
@@ -266,15 +266,13 @@ class _SaleTile extends StatelessWidget {
   }
 
   IconData get _paymentIcon {
-    switch (sale['payment_method'] as String?) {
+    switch (sale['sale_type'] as String?) {
       case 'cash':
         return Icons.payments_outlined;
-      case 'bank':
-        return Icons.account_balance_outlined;
-      case 'mobile_money':
-        return Icons.phone_android_outlined;
-      case 'credit_request':
+      case 'credit':
         return Icons.credit_score_outlined;
+      case 'partial':
+        return Icons.money_outlined;
       default:
         return Icons.payment_outlined;
     }

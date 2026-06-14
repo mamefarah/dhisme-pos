@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/dates.dart';
+import '../../../core/utils/errors.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/models/app_profile.dart';
@@ -22,8 +23,21 @@ class _OwnerCashClosingsScreenState extends State<OwnerCashClosingsScreen> {
   void _reload() => setState(() => _future = _repo.listClosings());
 
   Future<void> _review(String id, String status) async {
-    try { await _repo.review(id, status); _reload(); }
-    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Review failed: $e'))); }
+    try {
+      await _repo.review(id, status);
+      _reload();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(
+            content: Text(friendlyError(e, fallback: 'Could not process this decision. Please try again.')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ));
+      }
+    }
   }
 
   @override
@@ -32,6 +46,30 @@ class _OwnerCashClosingsScreenState extends State<OwnerCashClosingsScreen> {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 12),
+                  Text(
+                    friendlyError(snapshot.error!, fallback: 'Could not load cash closings. Please try again.'),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _reload,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try Again'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final rows = snapshot.data!;
         if (rows.isEmpty) return const EmptyState(message: 'No cash closing submitted yet.');
