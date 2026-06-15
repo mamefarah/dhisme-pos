@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/models/app_profile.dart';
+import '../../purchases/screens/purchases_screen.dart';
 import '../../suppliers/screens/suppliers_screen.dart';
 import '../data/product_repository.dart';
 import '../models/product.dart';
@@ -35,21 +36,52 @@ class _ProductsScreenState extends State<ProductsScreen> {
         title: const Text('Products & Stock'),
         actions: [
           if (widget.profile.isOwner || widget.profile.isManager)
-            IconButton(
-              icon: const Icon(Icons.local_shipping_outlined),
-              tooltip: 'Suppliers',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => SuppliersScreen(profile: widget.profile)),
-              ),
-            ),
-          if (widget.profile.isOwner || widget.profile.isManager)
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Add product',
-              onPressed: () async {
-                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductFormScreen(profile: widget.profile)));
-                _reload();
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              tooltip: 'More options',
+              onSelected: (value) async {
+                if (value == 'add_product') {
+                  await Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => ProductFormScreen(profile: widget.profile),
+                  ));
+                  _reload();
+                } else if (value == 'suppliers') {
+                  await Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => SuppliersScreen(profile: widget.profile),
+                  ));
+                } else if (value == 'purchases') {
+                  await Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => PurchasesScreen(profile: widget.profile),
+                  ));
+                  _reload();
+                }
               },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'add_product',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.add),
+                    title: Text('Add product'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'suppliers',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.local_shipping_outlined),
+                    title: Text('Suppliers'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'purchases',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.shopping_cart_outlined),
+                    title: Text('Purchases'),
+                  ),
+                ),
+              ],
             ),
         ],
       ),
