@@ -4,6 +4,8 @@ import '../../../core/widgets/stat_card.dart';
 import '../../approvals/screens/approvals_screen.dart';
 import '../../auth/models/app_profile.dart';
 import '../../customers/screens/customers_screen.dart';
+import '../../notifications/data/notifications_repository.dart';
+import '../../notifications/screens/notifications_screen.dart';
 import '../../products/screens/products_screen.dart';
 import '../../sales/screens/sales_history_screen.dart';
 import '../data/dashboard_repository.dart';
@@ -18,15 +20,35 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final _repo = DashboardRepository();
+  final _notifRepo = NotificationsRepository();
   late Future<Map<String, dynamic>> _future;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _future = _repo.stats();
+    _refreshUnread();
   }
 
-  void _reload() => setState(() => _future = _repo.stats());
+  Future<void> _refreshUnread() async {
+    try {
+      final count = await _notifRepo.unreadCount();
+      if (mounted) setState(() => _unreadCount = count);
+    } catch (_) {}
+  }
+
+  void _reload() {
+    setState(() => _future = _repo.stats());
+    _refreshUnread();
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => const NotificationsScreen(),
+    ));
+    _refreshUnread();
+  }
 
   void _goSales() => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => SalesHistoryScreen(profile: widget.profile),
@@ -56,6 +78,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: Text(isOwner ? 'Owner Dashboard' : 'Dashboard'),
         actions: [
+          IconButton(
+            onPressed: _openNotifications,
+            tooltip: 'Notifications',
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (_unreadCount > 0)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        _unreadCount > 99 ? '99+' : '$_unreadCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
         ],
       ),
