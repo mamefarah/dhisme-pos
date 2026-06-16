@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'app_card.dart';
 
 class StatCard extends StatelessWidget {
-  const StatCard({super.key, required this.title, required this.value, this.icon, this.color});
+  const StatCard({super.key, required this.title, required this.value, this.icon, this.color, this.onTap});
   final String title;
   final String value;
   final IconData? icon;
   final Color? color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

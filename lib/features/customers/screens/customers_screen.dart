@@ -8,8 +8,9 @@ import 'customer_detail_screen.dart';
 import 'customer_form_screen.dart';
 
 class CustomersScreen extends StatefulWidget {
-  const CustomersScreen({super.key, required this.profile});
+  const CustomersScreen({super.key, required this.profile, this.initialDebtOnly = false});
   final AppProfile profile;
+  final bool initialDebtOnly;
 
   @override
   State<CustomersScreen> createState() => _CustomersScreenState();
@@ -19,11 +20,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
   final _repo = CustomerRepository();
   final _search = TextEditingController();
   late Future<List<Customer>> _future;
-  bool _debtOnly = false;
+  late bool _debtOnly;
 
   @override
   void initState() {
     super.initState();
+    _debtOnly = widget.initialDebtOnly;
     _reload();
   }
 

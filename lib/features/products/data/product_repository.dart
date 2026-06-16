@@ -25,6 +25,14 @@ class ProductRepository {
     return data.cast<Map<String, dynamic>>();
   }
 
+  Future<void> addCategory({required String storeId, required String name}) async {
+    await sb.from('categories').insert({'store_id': storeId, 'name': name.trim()});
+  }
+
+  Future<void> updateCategory({required String id, required String name}) async {
+    await sb.from('categories').update({'name': name.trim()}).eq('id', id);
+  }
+
   Future<List<Map<String, dynamic>>> listStockMovements(String productId) async {
     final data = await sb
         .from('stock_movements')
