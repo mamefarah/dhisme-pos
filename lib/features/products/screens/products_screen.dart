@@ -6,14 +6,16 @@ import '../../purchases/screens/purchases_screen.dart';
 import '../../suppliers/screens/suppliers_screen.dart';
 import '../data/product_repository.dart';
 import '../models/product.dart';
+import 'categories_screen.dart';
 import 'product_detail_screen.dart';
 import 'product_form_screen.dart';
 
-enum _StockFilter { all, inStock, lowStock, outOfStock }
+enum StockFilter { all, inStock, lowStock, outOfStock }
 
 class ProductsScreen extends StatefulWidget {
-  const ProductsScreen({super.key, required this.profile});
+  const ProductsScreen({super.key, required this.profile, this.initialFilter = StockFilter.all});
   final AppProfile profile;
+  final StockFilter initialFilter;
 
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
@@ -23,11 +25,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
   final _repo = ProductRepository();
   final _search = TextEditingController();
   late Future<List<Product>> _future;
-  _StockFilter _filter = _StockFilter.all;
+  late StockFilter _filter;
 
   @override
   void initState() {
     super.initState();
+    _filter = widget.initialFilter;
     _future = _repo.listProducts();
   }
 
@@ -35,13 +38,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   List<Product> _applyFilter(List<Product> all) {
     switch (_filter) {
-      case _StockFilter.inStock:
+      case StockFilter.inStock:
         return all.where((p) => !p.isOutOfStock && !p.isLowStock).toList();
-      case _StockFilter.lowStock:
+      case StockFilter.lowStock:
         return all.where((p) => p.isLowStock).toList();
-      case _StockFilter.outOfStock:
+      case StockFilter.outOfStock:
         return all.where((p) => p.isOutOfStock).toList();
-      case _StockFilter.all:
+      case StockFilter.all:
         return all;
     }
   }
@@ -73,6 +76,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     builder: (_) => PurchasesScreen(profile: widget.profile),
                   ));
                   _reload();
+                } else if (value == 'categories') {
+                  await Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => CategoriesScreen(profile: widget.profile),
+                  ));
+                  _reload();
                 }
               },
               itemBuilder: (_) => const [
@@ -82,6 +90,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(Icons.add),
                     title: Text('Add product'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'categories',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.label_outlined),
+                    title: Text('Categories'),
                   ),
                 ),
                 PopupMenuItem(
@@ -126,17 +142,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
-                _FilterChip(label: 'All', selected: _filter == _StockFilter.all,
-                    onTap: () => setState(() => _filter = _StockFilter.all)),
+                _FilterChip(label: 'All', selected: _filter == StockFilter.all,
+                    onTap: () => setState(() => _filter = StockFilter.all)),
                 const SizedBox(width: 8),
-                _FilterChip(label: 'In Stock', selected: _filter == _StockFilter.inStock,
-                    color: Colors.green, onTap: () => setState(() => _filter = _StockFilter.inStock)),
+                _FilterChip(label: 'In Stock', selected: _filter == StockFilter.inStock,
+                    color: Colors.green, onTap: () => setState(() => _filter = StockFilter.inStock)),
                 const SizedBox(width: 8),
-                _FilterChip(label: 'Low Stock', selected: _filter == _StockFilter.lowStock,
-                    color: Colors.orange, onTap: () => setState(() => _filter = _StockFilter.lowStock)),
+                _FilterChip(label: 'Low Stock', selected: _filter == StockFilter.lowStock,
+                    color: Colors.orange, onTap: () => setState(() => _filter = StockFilter.lowStock)),
                 const SizedBox(width: 8),
-                _FilterChip(label: 'Out of Stock', selected: _filter == _StockFilter.outOfStock,
-                    color: Colors.red, onTap: () => setState(() => _filter = _StockFilter.outOfStock)),
+                _FilterChip(label: 'Out of Stock', selected: _filter == StockFilter.outOfStock,
+                    color: Colors.red, onTap: () => setState(() => _filter = StockFilter.outOfStock)),
               ],
             ),
           ),
