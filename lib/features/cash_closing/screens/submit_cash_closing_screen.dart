@@ -38,10 +38,11 @@ class _SubmitCashClosingScreenState extends State<SubmitCashClosingScreen> {
 
   void _reload() {
     setState(() {
-      _future = Future.wait([
-        _repo.todayClosing(),
-        _repo.todayStats(),
-      ]).then((r) => (r[0] as Map<String, dynamic>?, r[1] as Map<String, double>));
+      _future = () async {
+        final closing = await _repo.todayClosing();
+        final stats = await _repo.todayStats();
+        return (closing, stats);
+      }();
     });
   }
 

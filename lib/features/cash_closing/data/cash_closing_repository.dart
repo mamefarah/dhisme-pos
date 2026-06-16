@@ -18,11 +18,11 @@ class CashClosingRepository {
   Future<List<Map<String, dynamic>>> listClosings({String? status}) async {
     var query = sb
         .from('daily_cash_closings')
-        .select('*, profiles!seller_id(full_name)')
-        .order('closing_date', ascending: false)
-        .limit(100);
+        .select('*, profiles!seller_id(full_name)');
     if (status != null) query = query.eq('status', status);
-    return List<Map<String, dynamic>>.from(await query as List);
+    return List<Map<String, dynamic>>.from(
+      await query.order('closing_date', ascending: false).limit(100) as List,
+    );
   }
 
   Future<void> review(String id, String status) async {
@@ -41,7 +41,7 @@ class CashClosingRepository {
         .select()
         .eq('seller_id', userId)
         .eq('closing_date', todayIsoDate())
-        .maybeSingle() as Map<String, dynamic>?;
+        .maybeSingle();
   }
 
   /// Returns today's sales totals for the current user, grouped by payment type.

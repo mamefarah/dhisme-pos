@@ -11,11 +11,11 @@ class ApprovalRepository {
           '  customers!customer_id(name), '
           '  sale_items(product_name, unit, quantity, unit_price, total_price)'
           ')',
-        )
-        .order('created_at', ascending: false)
-        .limit(200);
+        );
     if (status != null) query = query.eq('status', status);
-    return List<Map<String, dynamic>>.from(await query as List);
+    return List<Map<String, dynamic>>.from(
+      await query.order('created_at', ascending: false).limit(200) as List,
+    );
   }
 
   Future<void> decide(String requestId, String decision, {String? comment}) async {

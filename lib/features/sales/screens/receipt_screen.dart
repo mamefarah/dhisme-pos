@@ -54,8 +54,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         _repo.fetchSaleDetails(widget.saleId),
         _repo.fetchStore(widget.profile.storeId),
       ]);
-      final saleData = results[0] as Map<String, dynamic>?;
-      final storeData = results[1] as Map<String, dynamic>?;
+      final saleData = results[0];
+      final storeData = results[1];
       if (mounted) {
         setState(() {
           _sale = saleData ?? _sale;
