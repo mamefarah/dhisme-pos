@@ -247,7 +247,7 @@ class _ClosingCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -278,9 +278,9 @@ class _ClosingCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
-                color: diffColor.withOpacity(0.08),
+                color: diffColor.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: diffColor.withOpacity(0.25)),
+                border: Border.all(color: diffColor.withValues(alpha: 0.25)),
               ),
               child: Row(children: [
                 Icon(
@@ -413,7 +413,7 @@ class _Chip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? c.withOpacity(0.15) : Colors.grey.withOpacity(0.08),
+          color: selected ? c.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: selected ? c : Colors.grey.shade300),
         ),

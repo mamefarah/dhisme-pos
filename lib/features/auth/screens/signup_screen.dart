@@ -275,7 +275,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 Text(
                   'By creating an account you agree that your data is stored securely in Supabase.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: cs.onSurface.withOpacity(0.5)),
+                  style: TextStyle(fontSize: 11, color: cs.onSurface.withValues(alpha: 0.5)),
                 ),
                 const SizedBox(height: 24),
               ],
@@ -357,7 +357,7 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(child: Divider(color: cs.primary.withOpacity(0.3))),
+        Expanded(child: Divider(color: cs.primary.withValues(alpha: 0.3))),
       ],
     );
   }

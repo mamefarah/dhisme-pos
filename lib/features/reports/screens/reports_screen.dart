@@ -368,7 +368,7 @@ class _PaymentBar extends StatelessWidget {
             child: LinearProgressIndicator(
               value: pct,
               minHeight: 5,
-              backgroundColor: color.withOpacity(0.12),
+              backgroundColor: color.withValues(alpha: 0.12),
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
@@ -409,7 +409,7 @@ class _ProductRow extends StatelessWidget {
             height: 24,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: rank <= 3 ? cs.primary.withOpacity(0.12) : Colors.grey.shade100,
+              color: rank <= 3 ? cs.primary.withValues(alpha: 0.12) : Colors.grey.shade100,
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -445,8 +445,8 @@ class _ProductRow extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: barPct,
                     minHeight: 3,
-                    backgroundColor: cs.primary.withOpacity(0.08),
-                    valueColor: AlwaysStoppedAnimation<Color>(cs.primary.withOpacity(0.5)),
+                    backgroundColor: cs.primary.withValues(alpha: 0.08),
+                    valueColor: AlwaysStoppedAnimation<Color>(cs.primary.withValues(alpha: 0.5)),
                   ),
                 ),
               ],
@@ -512,7 +512,7 @@ class _Chip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? c.withOpacity(0.15) : Colors.grey.withOpacity(0.08),
+          color: selected ? c.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: selected ? c : Colors.grey.shade300),
         ),

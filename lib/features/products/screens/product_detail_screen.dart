@@ -77,7 +77,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           children: [
             // Stock status
             Card(
-              color: stockColor().withOpacity(0.08),
+              color: stockColor().withValues(alpha: 0.08),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -100,7 +100,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: stockColor().withOpacity(0.15),
+                              color: stockColor().withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -283,7 +283,7 @@ class _MovementTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: _color(type).withOpacity(0.12),
+          backgroundColor: _color(type).withValues(alpha: 0.12),
           child: Icon(_icon(type), color: _color(type), size: 18),
         ),
         title: Row(

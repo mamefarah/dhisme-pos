@@ -265,7 +265,7 @@ class _StockReconciliationScreenState extends State<StockReconciliationScreen> {
             children: [
               // Instruction banner
               Container(
-                color: cs.primaryContainer.withOpacity(0.4),
+                color: cs.primaryContainer.withValues(alpha: 0.4),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(children: [
                   Icon(Icons.info_outline, size: 16, color: cs.primary),

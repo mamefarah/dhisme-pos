@@ -153,7 +153,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   onTap: () => _tapNotification(n),
                   child: Container(
                     color: isUnread
-                        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.25)
+                        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25)
                         : null,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
@@ -163,7 +163,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: _iconColor(type, context).withOpacity(0.1),
+                            color: _iconColor(type, context).withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(

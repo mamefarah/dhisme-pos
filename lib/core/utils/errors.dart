@@ -20,6 +20,12 @@ String friendlyError(
     if (msg.contains('already decided') || msg.contains('not pending')) {
       return 'This request has already been decided.';
     }
+    if (msg.contains('blocked from credit')) {
+      return 'This customer is blocked from credit sales. Ask the owner to unblock them first.';
+    }
+    if (msg.contains('credit limit')) {
+      return 'Credit limit exceeded. Reduce the order amount or ask the owner to increase the limit.';
+    }
     if (error.code == '23505') {
       return 'This record already exists. Please check for duplicates.';
     }

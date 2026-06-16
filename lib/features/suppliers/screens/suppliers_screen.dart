@@ -185,7 +185,7 @@ class _SupplierTile extends StatelessWidget {
         onTap: onTap,
         leading: CircleAvatar(
           backgroundColor:
-              s.isActive ? Colors.teal.withOpacity(0.15) : Colors.grey.withOpacity(0.15),
+              s.isActive ? Colors.teal.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
           child: Icon(
             Icons.local_shipping_outlined,
             color: s.isActive ? Colors.teal : Colors.grey,
@@ -207,7 +207,7 @@ class _SupplierTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

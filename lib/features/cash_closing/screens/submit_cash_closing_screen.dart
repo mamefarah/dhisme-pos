@@ -325,7 +325,7 @@ class _StatusBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(icon, size: 18, color: color),
@@ -370,9 +370,9 @@ class _StatsCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: cs.primary.withOpacity(0.08),
+                color: cs.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: cs.primary.withOpacity(0.25)),
+                border: Border.all(color: cs.primary.withValues(alpha: 0.25)),
               ),
               child: Row(children: [
                 Icon(Icons.payments_outlined, size: 18, color: cs.primary),
