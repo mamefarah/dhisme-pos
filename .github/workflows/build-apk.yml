@@ -10,6 +10,8 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: -Dorg.gradle.vfs.watch=false
 
     steps:
       - name: Checkout repository
@@ -45,9 +47,33 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
-      - name: Force compileSdk 36 for Android app and plugins
+      - name: Force compileSdk 36 for all Android Gradle subprojects
         run: |
           set -e
+          mkdir -p "$HOME/.gradle/init.d"
+          cat > "$HOME/.gradle/init.d/force-android-compile-sdk.gradle" <<'EOF'
+          gradle.projectsEvaluated {
+              rootProject.allprojects { project ->
+                  def androidExt = project.extensions.findByName("android")
+                  if (androidExt != null) {
+                      try {
+                          androidExt.compileSdk = 36
+                      } catch (Throwable ignored) {
+                          // Some Android Gradle Plugin versions expose only compileSdkVersion().
+                      }
+                      try {
+                          androidExt.compileSdkVersion 36
+                      } catch (Throwable ignored) {
+                          // Some Android Gradle Plugin versions expose only compileSdk property.
+                      }
+                      println("Forced compileSdk 36 for ${project.path}")
+                  }
+              }
+          }
+          EOF
+
+          echo "android.suppressUnsupportedCompileSdk=36" >> android/gradle.properties
+
           echo "Patching generated Android app Gradle files to compileSdk 36..."
           if [ -f android/app/build.gradle ]; then
             sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/g' android/app/build.gradle
@@ -59,17 +85,6 @@ jobs:
             sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/g' android/app/build.gradle.kts
             sed -i 's/compileSdk = [0-9][0-9]*/compileSdk = 36/g' android/app/build.gradle.kts
           fi
-
-          echo "Patching Flutter plugin Gradle files to compileSdk 36..."
-          find "$HOME/.pub-cache/hosted/pub.dev" -path "*/android/build.gradle" -type f -print0 | while IFS= read -r -d '' file; do
-            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' "$file"
-            sed -i 's/compileSdkVersion [0-9][0-9]*/compileSdkVersion 36/g' "$file"
-            sed -i 's/compileSdk [0-9][0-9]*/compileSdk 36/g' "$file"
-          done
-          find "$HOME/.pub-cache/hosted/pub.dev" -path "*/android/build.gradle.kts" -type f -print0 | while IFS= read -r -d '' file; do
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/g' "$file"
-            sed -i 's/compileSdk = [0-9][0-9]*/compileSdk = 36/g' "$file"
-          done
 
       - name: Generate splash screen
         run: dart run flutter_native_splash:create
