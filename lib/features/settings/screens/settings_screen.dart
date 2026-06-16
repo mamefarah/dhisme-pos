@@ -3,6 +3,7 @@ import '../../../core/services/supabase_service.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/models/app_profile.dart';
 import '../../employees/screens/employees_screen.dart';
+import 'store_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.profile});
@@ -32,6 +33,22 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+
+          // Owner/manager: Store settings
+          if (profile.isOwner || profile.isManager) ...[
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.storefront_outlined),
+                title: const Text('Store Settings'),
+                subtitle: const Text('Name, phone, and address shown on receipts'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => StoreSettingsScreen(profile: profile),
+                )),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Owner-only: Employee management
           if (profile.isOwner) ...[
