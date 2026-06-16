@@ -138,7 +138,7 @@ class _CreateInviteScreenState extends State<CreateInviteScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Valid for 7 days · Single use',
-                      style: TextStyle(fontSize: 12, color: cs.primary.withOpacity(0.7)),
+                      style: TextStyle(fontSize: 12, color: cs.primary.withValues(alpha: 0.7)),
                     ),
                     const SizedBox(height: 16),
                     Row(

@@ -233,7 +233,7 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? c.withOpacity(0.15) : Colors.grey.withOpacity(0.08),
+          color: selected ? c.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: selected ? c : Colors.grey.shade300),
         ),
@@ -269,7 +269,7 @@ class _ProductTile extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
-          backgroundColor: stockColor().withOpacity(0.12),
+          backgroundColor: stockColor().withValues(alpha: 0.12),
           child: Text(
             p.unit.substring(0, 1).toUpperCase(),
             style: TextStyle(color: stockColor(), fontWeight: FontWeight.bold),
@@ -307,7 +307,7 @@ class _ProductTile extends StatelessWidget {
   Widget _badge(String text, Color color) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),

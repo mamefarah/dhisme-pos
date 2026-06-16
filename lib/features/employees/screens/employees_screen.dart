@@ -170,7 +170,7 @@ class _EmployeeTile extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
-          backgroundColor: _roleColor(context, role).withOpacity(0.15),
+          backgroundColor: _roleColor(context, role).withValues(alpha: 0.15),
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : '?',
             style: TextStyle(
@@ -193,7 +193,7 @@ class _EmployeeTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: _roleColor(context, role).withOpacity(0.12),
+                color: _roleColor(context, role).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -219,8 +219,8 @@ class _EmployeeTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
                 color: isActive
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.red.withOpacity(0.1),
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(

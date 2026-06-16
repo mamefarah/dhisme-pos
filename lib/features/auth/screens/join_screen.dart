@@ -329,7 +329,7 @@ class _SectionLabel extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(child: Divider(color: cs.primary.withOpacity(0.3))),
+        Expanded(child: Divider(color: cs.primary.withValues(alpha: 0.3))),
       ],
     );
   }

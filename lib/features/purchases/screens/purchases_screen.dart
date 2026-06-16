@@ -147,7 +147,7 @@ class _PurchaseTile extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
-          backgroundColor: Colors.blue.withOpacity(0.12),
+          backgroundColor: Colors.blue.withValues(alpha: 0.12),
           child: const Icon(Icons.shopping_cart_outlined, color: Colors.blue, size: 20),
         ),
         title: Row(
@@ -161,7 +161,7 @@ class _PurchaseTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: _statusColor(p.paymentStatus).withOpacity(0.12),
+                color: _statusColor(p.paymentStatus).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
