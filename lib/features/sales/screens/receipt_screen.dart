@@ -97,8 +97,14 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   String get _customerName =>
       (_sale?['customers'] as Map?)?['name'] as String? ?? 'Walk-in customer';
 
-  double get _total => (_sale?['total_amount'] as num?)?.toDouble() ?? 0;
+  double get _total    => (_sale?['total_amount'] as num?)?.toDouble() ?? 0;
+  double get _subtotal => (_sale?['subtotal'] as num?)?.toDouble() ?? _total;
   double get _discount => (_sale?['discount'] as num?)?.toDouble() ?? 0;
+  String? get _notes      => _sale?['notes'] as String?;
+  String? get _referenceNo => _sale?['reference_no'] as String?;
+
+  bool get _isCreditUnpaid =>
+      _sale?['sale_type'] == 'credit' && _sale?['payment_status'] != 'paid';
 
   String get _paymentLabel {
     final saleType = _sale?['sale_type'] as String?;
@@ -164,7 +170,10 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not generate PDF. Please try again.')),
+          const SnackBar(
+            content: Text('Could not generate PDF. Please try again.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -172,163 +181,210 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     }
   }
 
+  /// 80 mm wide receipt format — fits standard thermal roll printers.
+  /// Height is auto (double.infinity) so the page grows with content.
   Future<Uint8List> _buildPdf() async {
     final doc = pw.Document();
+    final receiptFormat = PdfPageFormat(
+      80 * PdfPageFormat.mm,
+      double.infinity,
+      marginAll: 4 * PdfPageFormat.mm,
+    );
+
     doc.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a5,
-        margin: const pw.EdgeInsets.all(24),
-        build: (pw.Context ctx) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Center(
-                child: pw.Column(
-                  children: [
-                    pw.Text(
-                      _storeName,
-                      style: pw.TextStyle(
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    if (_storePhone != null)
-                      pw.Text(
-                        _storePhone!,
-                        style: const pw.TextStyle(fontSize: 10),
-                      ),
-                    if (_storeAddress != null)
-                      pw.Text(
-                        _storeAddress!,
-                        style: const pw.TextStyle(fontSize: 10),
-                      ),
-                  ],
+      pw.MultiPage(
+        pageFormat: receiptFormat,
+        build: (pw.Context ctx) => [
+          // ── Store header ───────────────────────────────────────
+          pw.Center(
+            child: pw.Column(
+              children: [
+                pw.Text(
+                  _storeName,
+                  style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
                 ),
-              ),
-              pw.Divider(),
-              pw.Text(
-                'RECEIPT',
-                style: pw.TextStyle(
-                  fontSize: 13,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.SizedBox(height: 4),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Invoice: $_invoiceNo',
-                      style: const pw.TextStyle(fontSize: 9)),
-                  pw.Text(_dateLabel, style: const pw.TextStyle(fontSize: 9)),
-                ],
-              ),
-              pw.Text('Seller: $_sellerName',
-                  style: const pw.TextStyle(fontSize: 9)),
-              pw.Text('Customer: $_customerName',
-                  style: const pw.TextStyle(fontSize: 9)),
-              pw.SizedBox(height: 6),
-              pw.Divider(thickness: 0.5),
-              if (_items.isNotEmpty) ...[
-                pw.Table(
-                  columnWidths: const {
-                    0: pw.FlexColumnWidth(3.5),
-                    1: pw.FlexColumnWidth(1.2),
-                    2: pw.FlexColumnWidth(1.8),
-                    3: pw.FlexColumnWidth(1.8),
-                  },
-                  children: [
-                    pw.TableRow(
-                      children: [
-                        pw.Text('Item',
-                            style: pw.TextStyle(
-                                fontSize: 9,
-                                fontWeight: pw.FontWeight.bold)),
-                        pw.Text('Qty',
-                            style: pw.TextStyle(
-                                fontSize: 9,
-                                fontWeight: pw.FontWeight.bold)),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.only(right: 2),
-                          child: pw.Text('Price',
-                              textAlign: pw.TextAlign.right,
-                              style: pw.TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: pw.FontWeight.bold)),
-                        ),
-                        pw.Text('Total',
-                            textAlign: pw.TextAlign.right,
-                            style: pw.TextStyle(
-                                fontSize: 9,
-                                fontWeight: pw.FontWeight.bold)),
-                      ],
-                    ),
-                    for (final item in _items)
-                      pw.TableRow(
-                        children: [
-                          pw.Text(
-                            '${_itemName(item)} (${_itemUnit(item)})',
-                            style: const pw.TextStyle(fontSize: 9),
-                          ),
-                          pw.Text(
-                            _fmtQty(_itemQty(item)),
-                            style: const pw.TextStyle(fontSize: 9),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.only(right: 2),
-                            child: pw.Text(
-                              money(_itemUnitPrice(item)),
-                              textAlign: pw.TextAlign.right,
-                              style: const pw.TextStyle(fontSize: 9),
-                            ),
-                          ),
-                          pw.Text(
-                            money(_itemTotal(item)),
-                            textAlign: pw.TextAlign.right,
-                            style: const pw.TextStyle(fontSize: 9),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-                pw.Divider(thickness: 0.5),
+                if (_storePhone != null)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(top: 2),
+                    child: pw.Text(_storePhone!, style: const pw.TextStyle(fontSize: 9)),
+                  ),
+                if (_storeAddress != null)
+                  pw.Text(_storeAddress!, style: const pw.TextStyle(fontSize: 9)),
               ],
-              if (_discount > 0)
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            ),
+          ),
+          pw.Divider(),
+
+          // ── Receipt meta ───────────────────────────────────────
+          pw.Center(
+            child: pw.Text(
+              'RECEIPT',
+              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          _pdfMetaRow('Invoice', _invoiceNo),
+          _pdfMetaRow('Date', _dateLabel),
+          _pdfMetaRow('Seller', _sellerName),
+          _pdfMetaRow('Customer', _customerName),
+          if (_referenceNo != null && _referenceNo!.isNotEmpty)
+            _pdfMetaRow('Ref No', _referenceNo!),
+          pw.Divider(thickness: 0.5),
+
+          // ── Items table ────────────────────────────────────────
+          if (_items.isNotEmpty) ...[
+            pw.Table(
+              columnWidths: const {
+                0: pw.FlexColumnWidth(4.5),
+                1: pw.FlexColumnWidth(2),
+                2: pw.FlexColumnWidth(2.5),
+              },
+              children: [
+                pw.TableRow(
                   children: [
-                    pw.Text('Discount:', style: const pw.TextStyle(fontSize: 10)),
-                    pw.Text('- ${money(_discount)}',
-                        style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text('Item',
+                        style: pw.TextStyle(
+                            fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Qty',
+                        style: pw.TextStyle(
+                            fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Total',
+                        textAlign: pw.TextAlign.right,
+                        style: pw.TextStyle(
+                            fontSize: 8, fontWeight: pw.FontWeight.bold)),
                   ],
                 ),
-              pw.Row(
+                for (final item in _items)
+                  pw.TableRow(
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.only(top: 3),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(_itemName(item),
+                                style: const pw.TextStyle(fontSize: 8)),
+                            pw.Text('@ ${money(_itemUnitPrice(item))}',
+                                style: pw.TextStyle(
+                                    fontSize: 7, color: PdfColors.grey700)),
+                          ],
+                        ),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.only(top: 3),
+                        child: pw.Text(
+                          '${_fmtQty(_itemQty(item))} ${_itemUnit(item)}',
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.only(top: 3),
+                        child: pw.Text(
+                          money(_itemTotal(item)),
+                          textAlign: pw.TextAlign.right,
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            pw.Divider(thickness: 0.5),
+          ],
+
+          // ── Totals ─────────────────────────────────────────────
+          if (_discount > 0) ...[
+            _pdfTotalRow('Subtotal', money(_subtotal)),
+            _pdfTotalRow('Discount', '- ${money(_discount)}'),
+          ],
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('TOTAL',
+                  style: pw.TextStyle(
+                      fontSize: 11, fontWeight: pw.FontWeight.bold)),
+              pw.Text(money(_total),
+                  style: pw.TextStyle(
+                      fontSize: 11, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+          pw.SizedBox(height: 4),
+          _pdfMetaRow('Payment', _paymentLabel),
+
+          // ── Credit "Amount Due" box ────────────────────────────
+          if (_isCreditUnpaid) ...[
+            pw.SizedBox(height: 6),
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(width: 1.5),
+              ),
+              child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('TOTAL:',
+                  pw.Text('AMOUNT DUE',
                       style: pw.TextStyle(
-                          fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                          fontSize: 10, fontWeight: pw.FontWeight.bold)),
                   pw.Text(money(_total),
                       style: pw.TextStyle(
-                          fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                          fontSize: 10, fontWeight: pw.FontWeight.bold)),
                 ],
               ),
-              pw.SizedBox(height: 4),
-              pw.Text('Payment: $_paymentLabel',
-                  style: const pw.TextStyle(fontSize: 10)),
-              pw.Text('Status: $_statusLabel',
-                  style: const pw.TextStyle(fontSize: 10)),
-              pw.Divider(),
-              pw.Center(
-                child: pw.Text('Thank you for your business!',
-                    style: const pw.TextStyle(fontSize: 10)),
-              ),
-            ],
-          );
-        },
+            ),
+          ],
+
+          // ── Notes ─────────────────────────────────────────────
+          if (_notes != null && _notes!.isNotEmpty) ...[
+            pw.SizedBox(height: 4),
+            pw.Text('Notes: $_notes',
+                style: pw.TextStyle(
+                    fontSize: 8, color: PdfColors.grey700)),
+          ],
+
+          // ── Footer ─────────────────────────────────────────────
+          pw.Divider(),
+          pw.Center(
+            child: pw.Text(
+              'Thank you for your business!',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+          ),
+          pw.SizedBox(height: 6),
+        ],
       ),
     );
     return doc.save();
   }
+
+  pw.Widget _pdfMetaRow(String label, String value) => pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 1),
+        child: pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.SizedBox(
+              width: 48,
+              child: pw.Text(label,
+                  style: pw.TextStyle(
+                      fontSize: 8, color: PdfColors.grey700)),
+            ),
+            pw.Expanded(
+              child: pw.Text(value,
+                  style: const pw.TextStyle(fontSize: 8)),
+            ),
+          ],
+        ),
+      );
+
+  pw.Widget _pdfTotalRow(String label, String value) => pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 1),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
+            pw.Text(value, style: const pw.TextStyle(fontSize: 9)),
+          ],
+        ),
+      );
 
   // ── UI build ───────────────────────────────────────────────────
 
@@ -384,7 +440,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      // Header card
+                      // ── Store header card ──────────────────────
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(20),
@@ -423,7 +479,37 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Meta info card
+                      // ── Credit pending banner ─────────────────
+                      if (_isCreditUnpaid)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.amber.shade300),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.schedule,
+                                  size: 18, color: Colors.amber.shade800),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Payment pending — amount due: ${money(_total)}',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.amber.shade900,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // ── Meta info card ────────────────────────
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -436,8 +522,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                               ),
                               _MetaRow(label: 'Date', value: _dateLabel),
                               _MetaRow(label: 'Seller', value: _sellerName),
-                              _MetaRow(
-                                  label: 'Customer', value: _customerName),
+                              _MetaRow(label: 'Customer', value: _customerName),
                               _MetaRow(
                                   label: 'Payment', value: _paymentLabel),
                               _MetaRow(
@@ -447,13 +532,19 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                                     ? Colors.green
                                     : null,
                               ),
+                              if (_referenceNo != null &&
+                                  _referenceNo!.isNotEmpty)
+                                _MetaRow(
+                                    label: 'Ref No', value: _referenceNo!),
+                              if (_notes != null && _notes!.isNotEmpty)
+                                _MetaRow(label: 'Notes', value: _notes!),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
 
-                      // Items card
+                      // ── Items card ────────────────────────────
                       if (_loading)
                         const Card(
                           child: Padding(
@@ -547,18 +638,23 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                         ),
                       const SizedBox(height: 12),
 
-                      // Totals card
+                      // ── Totals card ───────────────────────────
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             children: [
-                              if (_discount > 0)
+                              if (_discount > 0) ...[
+                                _MetaRow(
+                                  label: 'Subtotal',
+                                  value: money(_subtotal),
+                                ),
                                 _MetaRow(
                                   label: 'Discount',
                                   value: '− ${money(_discount)}',
                                   valueColor: Colors.red,
                                 ),
+                              ],
                               _MetaRow(
                                 label: 'Total',
                                 value: money(_total),
@@ -571,7 +667,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Share/Print button
+                      // ── Share/Print button ────────────────────
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
@@ -613,6 +709,7 @@ class _MetaRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 90,
