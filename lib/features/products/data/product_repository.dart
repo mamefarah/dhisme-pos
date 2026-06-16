@@ -3,14 +3,36 @@ import '../models/product.dart';
 
 class ProductRepository {
   Future<List<Product>> listProducts({String? search}) async {
-    var query = sb.from('products').select().eq('is_active', true).order('name');
-    final data = await query;
-    var products = (data as List).map((e) => Product.fromMap(e)).toList();
+    final data = await sb
+        .from('products')
+        .select('*, categories(name)')
+        .eq('is_active', true)
+        .order('name') as List<dynamic>;
+
+    var products = data.map((e) => Product.fromMap(e as Map<String, dynamic>)).toList();
     if (search != null && search.trim().isNotEmpty) {
       final s = search.trim().toLowerCase();
       products = products.where((p) => p.name.toLowerCase().contains(s)).toList();
     }
     return products;
+  }
+
+  Future<List<Map<String, dynamic>>> listCategories() async {
+    final data = await sb
+        .from('categories')
+        .select('id, name')
+        .order('name') as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> listStockMovements(String productId) async {
+    final data = await sb
+        .from('stock_movements')
+        .select('*, profiles!created_by(full_name)')
+        .eq('product_id', productId)
+        .order('created_at', ascending: false)
+        .limit(50) as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
   }
 
   Future<void> addProduct({
@@ -22,6 +44,8 @@ class ProductRepository {
     required double minimumSellingPrice,
     required double currentStock,
     required double minimumStock,
+    String? categoryId,
+    String? notes,
   }) async {
     await sb.from('products').insert({
       'store_id': storeId,
@@ -32,10 +56,24 @@ class ProductRepository {
       'minimum_selling_price': minimumSellingPrice,
       'current_stock': currentStock,
       'minimum_stock': minimumStock,
+      if (categoryId != null) 'category_id': categoryId,
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
     });
   }
 
   Future<void> updateProduct(Product product, Map<String, dynamic> changes) async {
     await sb.from('products').update(changes).eq('id', product.id);
+  }
+
+  Future<void> adjustStock({
+    required String productId,
+    required double quantityChange,
+    required String reason,
+  }) async {
+    await sb.rpc('adjust_stock', params: {
+      'p_product_id': productId,
+      'p_quantity_change': quantityChange,
+      'p_reason': reason,
+    });
   }
 }
