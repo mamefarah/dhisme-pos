@@ -3,6 +3,7 @@ import '../../../core/services/supabase_service.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/models/app_profile.dart';
 import '../../employees/screens/employees_screen.dart';
+import '../../products/screens/stock_reconciliation_screen.dart';
 import '../../reports/screens/reports_screen.dart';
 import 'store_settings_screen.dart';
 
@@ -35,7 +36,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Owner/manager: Store settings
+          // Owner/manager: Store settings + stock count
           if (profile.isOwner || profile.isManager) ...[
             Card(
               child: ListTile(
@@ -45,6 +46,18 @@ class SettingsScreen extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => StoreSettingsScreen(profile: profile),
+                )),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.inventory_2_outlined),
+                title: const Text('Stock Count'),
+                subtitle: const Text('Enter physical counts to reconcile system stock'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => StockReconciliationScreen(profile: profile),
                 )),
               ),
             ),
