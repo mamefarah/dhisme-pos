@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/errors.dart';
 import '../../auth/models/app_profile.dart';
 import '../data/customer_repository.dart';
+import '../models/customer.dart';
 
 class CustomerFormScreen extends StatefulWidget {
-  const CustomerFormScreen({super.key, required this.profile});
+  const CustomerFormScreen({super.key, required this.profile, this.customer});
   final AppProfile profile;
+  final Customer? customer;
 
   @override
   State<CustomerFormScreen> createState() => _CustomerFormScreenState();
@@ -17,13 +19,31 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _location = TextEditingController();
+  final _notes = TextEditingController();
+  bool _isActive = true;
   bool _loading = false;
+
+  bool get _isEdit => widget.customer != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEdit) {
+      final c = widget.customer!;
+      _name.text = c.name;
+      _phone.text = c.phone ?? '';
+      _location.text = c.location ?? '';
+      _notes.text = c.notes ?? '';
+      _isActive = c.isActive;
+    }
+  }
 
   @override
   void dispose() {
     _name.dispose();
     _phone.dispose();
     _location.dispose();
+    _notes.dispose();
     super.dispose();
   }
 
@@ -31,32 +51,36 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
     try {
-      await _repo.addCustomer(
-        storeId: widget.profile.storeId,
-        name: _name.text.trim(),
-        phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-        location:
-            _location.text.trim().isEmpty ? null : _location.text.trim(),
-      );
-      if (mounted) Navigator.pop(context);
+      if (_isEdit) {
+        await _repo.updateCustomer(
+          id: widget.customer!.id,
+          name: _name.text.trim(),
+          phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+          location: _location.text.trim().isEmpty ? null : _location.text.trim(),
+          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          isActive: _isActive,
+        );
+      } else {
+        await _repo.addCustomer(
+          storeId: widget.profile.storeId,
+          name: _name.text.trim(),
+          phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+          location: _location.text.trim().isEmpty ? null : _location.text.trim(),
+          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        );
+      }
+      if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                friendlyError(
-                  e,
-                  fallback:
-                      'Could not save customer. Please check your information and try again.',
-                ),
-              ),
-              backgroundColor: Theme.of(context).colorScheme.error,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 5),
-            ),
-          );
+          ..showSnackBar(SnackBar(
+            content: Text(friendlyError(e,
+                fallback: 'Could not save customer. Please check your information and try again.')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -66,7 +90,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Customer')),
+      appBar: AppBar(title: Text(_isEdit ? 'Edit Customer' : 'Add Customer')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -77,7 +101,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
-                labelText: 'Customer name',
+                labelText: 'Customer name *',
                 prefixIcon: Icon(Icons.person_outline),
               ),
               validator: (v) {
@@ -100,24 +124,46 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
             TextFormField(
               controller: _location,
               textCapitalization: TextCapitalization.sentences,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _save(),
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Project / location (optional)',
                 prefixIcon: Icon(Icons.location_on_outlined),
               ),
             ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _notes,
+              textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.done,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Notes (optional)',
+                prefixIcon: Icon(Icons.notes_outlined),
+                alignLabelWithHint: true,
+              ),
+            ),
+            if (_isEdit) ...[
+              const SizedBox(height: 8),
+              SwitchListTile(
+                value: _isActive,
+                onChanged: (v) => setState(() => _isActive = v),
+                title: const Text('Active customer'),
+                subtitle: Text(_isActive
+                    ? 'This customer is active and can be assigned to credit sales.'
+                    : 'Inactive customers are hidden from new credit sales.'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: _loading ? null : _save,
               icon: _loading
                   ? const SizedBox.square(
                       dimension: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.save),
-              label: const Text('Save Customer'),
+              label: Text(_isEdit ? 'Save Changes' : 'Add Customer'),
             ),
           ],
         ),
