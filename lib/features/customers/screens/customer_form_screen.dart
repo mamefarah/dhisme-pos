@@ -20,7 +20,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   final _phone = TextEditingController();
   final _location = TextEditingController();
   final _notes = TextEditingController();
+  final _creditLimit = TextEditingController();
+  final _creditDays = TextEditingController();
   bool _isActive = true;
+  bool _creditBlocked = false;
   bool _loading = false;
 
   bool get _isEdit => widget.customer != null;
@@ -35,6 +38,9 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       _location.text = c.location ?? '';
       _notes.text = c.notes ?? '';
       _isActive = c.isActive;
+      _creditLimit.text = c.creditLimit > 0 ? c.creditLimit.toStringAsFixed(0) : '';
+      _creditDays.text = c.creditDays > 0 ? c.creditDays.toString() : '';
+      _creditBlocked = c.creditBlocked;
     }
   }
 
@@ -44,6 +50,8 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     _phone.dispose();
     _location.dispose();
     _notes.dispose();
+    _creditLimit.dispose();
+    _creditDays.dispose();
     super.dispose();
   }
 
@@ -59,6 +67,9 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           location: _location.text.trim().isEmpty ? null : _location.text.trim(),
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           isActive: _isActive,
+          creditLimit: double.tryParse(_creditLimit.text.trim()) ?? 0,
+          creditDays: int.tryParse(_creditDays.text.trim()) ?? 0,
+          creditBlocked: _creditBlocked,
         );
       } else {
         await _repo.addCustomer(
@@ -143,14 +154,71 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               ),
             ),
             if (_isEdit) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Credit Settings',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54),
+              ),
               const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _creditLimit,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Credit limit (0 = none)',
+                      prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                      isDense: true,
+                    ),
+                    validator: (v) {
+                      if (v != null && v.trim().isNotEmpty) {
+                        final n = double.tryParse(v.trim());
+                        if (n == null || n < 0) return 'Enter a valid amount';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _creditDays,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'Max days (0 = none)',
+                      prefixIcon: Icon(Icons.calendar_today_outlined),
+                      isDense: true,
+                    ),
+                    validator: (v) {
+                      if (v != null && v.trim().isNotEmpty) {
+                        final n = int.tryParse(v.trim());
+                        if (n == null || n < 0) return 'Enter a whole number';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 4),
+              SwitchListTile(
+                value: _creditBlocked,
+                onChanged: (v) => setState(() => _creditBlocked = v),
+                title: const Text('Block credit sales'),
+                subtitle: Text(_creditBlocked
+                    ? 'No new credit sales allowed for this customer.'
+                    : 'Credit sales are allowed (subject to limit).'),
+                contentPadding: EdgeInsets.zero,
+              ),
+              const SizedBox(height: 4),
               SwitchListTile(
                 value: _isActive,
                 onChanged: (v) => setState(() => _isActive = v),
                 title: const Text('Active customer'),
                 subtitle: Text(_isActive
-                    ? 'This customer is active and can be assigned to credit sales.'
-                    : 'Inactive customers are hidden from new credit sales.'),
+                    ? 'This customer is active and can be assigned to sales.'
+                    : 'Inactive customers are hidden from new sales.'),
                 contentPadding: EdgeInsets.zero,
               ),
             ],

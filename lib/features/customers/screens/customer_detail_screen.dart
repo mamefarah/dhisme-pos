@@ -231,6 +231,47 @@ class _CustomerHeader extends StatelessWidget {
               label: const Text('Record Payment'),
             ),
           ],
+          if (customer.creditBlocked) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(children: [
+                Icon(Icons.block, size: 16, color: Colors.red.shade700),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Credit sales blocked for this customer.',
+                    style: TextStyle(fontSize: 12, color: Colors.red),
+                  ),
+                ),
+              ]),
+            ),
+          ] else if (customer.hasLimit) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: Row(children: [
+                Icon(Icons.credit_score_outlined, size: 16, color: Colors.blue.shade700),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Credit limit: ${money(customer.creditLimit)}  •  Available: ${money(customer.remainingCredit)}',
+                    style: TextStyle(fontSize: 12, color: Colors.blue.shade800),
+                  ),
+                ),
+              ]),
+            ),
+          ],
         ],
       ),
     );

@@ -48,7 +48,7 @@ class SalesRepository {
         .from('sales')
         .select(
           'id, invoice_no, total_amount, subtotal, discount, '
-          'sale_type, payment_status, status, created_at, '
+          'sale_type, payment_method, payment_status, status, created_at, '
           'profiles!seller_id(full_name), customers!customer_id(name)',
         )
         .order('created_at', ascending: false);
