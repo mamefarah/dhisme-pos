@@ -22,7 +22,7 @@ class StatCard extends StatelessWidget {
             Expanded(child: Text(title, style: Theme.of(context).textTheme.bodyMedium)),
           ]),
           const SizedBox(height: 10),
-          Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );
