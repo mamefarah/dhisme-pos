@@ -21,6 +21,14 @@ dependencies:
   connectivity_plus: ^6.1.4
   flutter_native_splash: ^2.4.5
 
+# GitHub Actions was resolving newest transitive Android plugins from passkeys_doctor
+# that require compileSdk 36 while passkeys_doctor compiles at SDK 35.
+# These overrides keep the build stable until passkeys_doctor/supabase dependencies
+# migrate fully to Android SDK 36 / built-in Kotlin.
+dependency_overrides:
+  device_info_plus: 11.5.0
+  package_info_plus: 8.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
