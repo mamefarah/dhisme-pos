@@ -3,14 +3,9 @@ import '../models/supplier.dart';
 
 class SupplierRepository {
   Future<List<Supplier>> listSuppliers({String search = '', bool activeOnly = false}) async {
-    var query = sb
-        .from('suppliers')
-        .select()
-        .order('name');
-
+    var query = sb.from('suppliers').select();
     if (activeOnly) query = query.eq('is_active', true);
-
-    final data = await query as List<dynamic>;
+    final data = await query.order('name') as List<dynamic>;
     final suppliers = data.map((e) => Supplier.fromMap(e as Map<String, dynamic>)).toList();
 
     if (search.isEmpty) return suppliers;

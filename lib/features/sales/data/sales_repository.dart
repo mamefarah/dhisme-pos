@@ -50,13 +50,14 @@ class SalesRepository {
           'id, invoice_no, total_amount, subtotal, discount, '
           'sale_type, payment_method, payment_status, status, created_at, '
           'profiles!seller_id(full_name), customers!customer_id(name)',
-        )
-        .order('created_at', ascending: false);
+        );
 
     if (from != null) query = query.gte('created_at', from.toUtc().toIso8601String());
     if (to != null)   query = query.lte('created_at', to.toUtc().toIso8601String());
 
-    return List<Map<String, dynamic>>.from(await query.limit(limit) as List);
+    return List<Map<String, dynamic>>.from(
+      await query.order('created_at', ascending: false).limit(limit) as List,
+    );
   }
 
   /// Fetches a single sale with its line items for the receipt.

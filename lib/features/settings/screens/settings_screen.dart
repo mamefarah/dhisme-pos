@@ -30,7 +30,7 @@ class SettingsScreen extends StatelessWidget {
               title: Text(profile.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(
                 '${_roleLabel(profile.role)} • ${profile.phone ?? 'No phone'}\n'
-                'ID: ${sb.auth.currentUser?.id?.substring(0, 8) ?? ''}…',
+                'ID: ${sb.auth.currentUser?.id.substring(0, 8) ?? ''}…',
               ),
             ),
           ),

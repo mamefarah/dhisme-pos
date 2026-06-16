@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/errors.dart';
-import '../../../core/utils/money.dart';
 import '../../auth/models/app_profile.dart';
 import '../data/product_repository.dart';
 import '../models/product.dart';
