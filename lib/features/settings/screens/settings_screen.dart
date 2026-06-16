@@ -3,6 +3,7 @@ import '../../../core/services/supabase_service.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/models/app_profile.dart';
 import '../../employees/screens/employees_screen.dart';
+import '../../reports/screens/reports_screen.dart';
 import 'store_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -50,8 +51,20 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 12),
           ],
 
-          // Owner-only: Employee management
+          // Owner-only: Reports + Employee management
           if (profile.isOwner) ...[
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.bar_chart_outlined),
+                title: const Text('Sales Reports'),
+                subtitle: const Text('Revenue by period and top-selling products'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => ReportsScreen(profile: profile),
+                )),
+              ),
+            ),
+            const SizedBox(height: 12),
             Card(
               child: ListTile(
                 leading: const Icon(Icons.group_outlined),
