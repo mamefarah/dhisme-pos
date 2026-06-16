@@ -37,18 +37,26 @@ class SalesRepository {
     return requestId as String;
   }
 
-  /// Returns up to [limit] recent sales for this store, newest first.
-  Future<List<Map<String, dynamic>>> salesHistory({int limit = 50}) async {
-    final data = await sb
+  /// Returns recent sales for this store, newest first.
+  /// Pass [from] / [to] (UTC) to narrow by date range.
+  Future<List<Map<String, dynamic>>> salesHistory({
+    int limit = 200,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    var query = sb
         .from('sales')
         .select(
           'id, invoice_no, total_amount, subtotal, discount, '
           'sale_type, payment_status, status, created_at, '
           'profiles!seller_id(full_name), customers!customer_id(name)',
         )
-        .order('created_at', ascending: false)
-        .limit(limit);
-    return List<Map<String, dynamic>>.from(data as List);
+        .order('created_at', ascending: false);
+
+    if (from != null) query = query.gte('created_at', from.toUtc().toIso8601String());
+    if (to != null)   query = query.lte('created_at', to.toUtc().toIso8601String());
+
+    return List<Map<String, dynamic>>.from(await query.limit(limit) as List);
   }
 
   /// Fetches a single sale with its line items for the receipt.
