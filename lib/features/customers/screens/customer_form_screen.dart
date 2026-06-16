@@ -153,7 +153,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                 alignLabelWithHint: true,
               ),
             ),
-            if (_isEdit) ...[
+            if (_isEdit && (widget.profile.isOwner || widget.profile.isManager)) ...[
               const SizedBox(height: 16),
               const Text(
                 'Credit Settings',

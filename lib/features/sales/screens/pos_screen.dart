@@ -305,8 +305,9 @@ class _PosScreenState extends State<PosScreen> {
           ),
         ],
       ),
-      body: Row(
-        children: [
+      body: LayoutBuilder(builder: (ctx, constraints) {
+        final wide = constraints.maxWidth >= 600;
+        return Flex(direction: wide ? Axis.horizontal : Axis.vertical, children: [
           // ── Products panel ──────────────────────────────────────
           Expanded(
             flex: 3,
@@ -399,7 +400,7 @@ class _PosScreenState extends State<PosScreen> {
             ),
           ),
 
-          Container(width: 1, color: Colors.black12),
+          wide ? Container(width: 1, color: Colors.black12) : Container(height: 1, color: Colors.black12),
 
           // ── Cart panel ──────────────────────────────────────────
           Expanded(
@@ -593,8 +594,8 @@ class _PosScreenState extends State<PosScreen> {
               ],
             ),
           ),
-        ],
-      ),
+        ]);
+      }),
     );
   }
 }
@@ -642,7 +643,7 @@ class _CartItem extends StatelessWidget {
                 onTap: onDecrement,
                 borderRadius: BorderRadius.circular(12),
                 child: const Padding(
-                  padding: EdgeInsets.all(4),
+                  padding: EdgeInsets.all(14),
                   child: Icon(Icons.remove_circle_outline, size: 20),
                 ),
               ),
@@ -664,7 +665,7 @@ class _CartItem extends StatelessWidget {
                 onTap: onIncrement,
                 borderRadius: BorderRadius.circular(12),
                 child: const Padding(
-                  padding: EdgeInsets.all(4),
+                  padding: EdgeInsets.all(14),
                   child: Icon(Icons.add_circle_outline, size: 20),
                 ),
               ),
