@@ -102,12 +102,15 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
 
   String get _paymentLabel {
     final saleType = _sale?['sale_type'] as String?;
-    final paymentStatus = _sale?['payment_status'] as String?;
-    switch (saleType) {
-      case 'cash':    return 'Cash';
-      case 'credit':  return paymentStatus == 'paid' ? 'Credit (paid)' : 'Credit';
-      case 'partial': return 'Partial payment';
-      default:        return saleType ?? '—';
+    if (saleType == 'credit') {
+      return _sale?['payment_status'] == 'paid' ? 'Credit (paid)' : 'Credit';
+    }
+    switch (_sale?['payment_method'] as String?) {
+      case 'cash':         return 'Cash';
+      case 'bank':         return 'Bank Transfer';
+      case 'mobile_money': return 'Mobile Money';
+      case 'mixed':        return 'Mixed';
+      default:             return saleType == 'partial' ? 'Partial payment' : (saleType ?? '—');
     }
   }
 

@@ -37,28 +37,42 @@ class CashClosingRepository {
     final today = DateTime.now();
     final start = DateTime(today.year, today.month, today.day).toUtc().toIso8601String();
     final end = DateTime(today.year, today.month, today.day + 1).toUtc().toIso8601String();
+    final userId = sb.auth.currentUser?.id;
+    if (userId == null) return {'cash': 0, 'bank': 0, 'mobile_money': 0, 'credit': 0};
 
-    final data = List<Map<String, dynamic>>.from(
+    // Query payments made by this seller today (cash/bank/mobile_money)
+    final payments = List<Map<String, dynamic>>.from(
+      await sb
+          .from('payments')
+          .select('payment_method, amount')
+          .eq('seller_id', userId)
+          .gte('created_at', start)
+          .lt('created_at', end) as List,
+    );
+
+    // Query approved credit sales created by this seller today
+    final creditSales = List<Map<String, dynamic>>.from(
       await sb
           .from('sales')
-          .select('sale_type, payment_method, total_amount, status')
+          .select('total_amount')
+          .eq('seller_id', userId)
+          .eq('sale_type', 'credit')
+          .eq('status', 'completed')
           .gte('created_at', start)
           .lt('created_at', end) as List,
     );
 
     double cash = 0, bank = 0, mobileMoney = 0, credit = 0;
-    for (final row in data) {
-      final amount = (row['total_amount'] as num?)?.toDouble() ?? 0;
-      final saleType = row['sale_type'] as String? ?? '';
-      final payMethod = row['payment_method'] as String? ?? '';
-      final rowStatus = row['status'] as String? ?? '';
-      if (saleType == 'credit') {
-        credit += amount;
-      } else if (rowStatus == 'completed') {
-        if (payMethod == 'cash') cash += amount;
-        else if (payMethod == 'bank') bank += amount;
-        else if (payMethod == 'mobile_money') mobileMoney += amount;
+    for (final row in payments) {
+      final amount = (row['amount'] as num?)?.toDouble() ?? 0;
+      switch (row['payment_method'] as String?) {
+        case 'cash': cash += amount; break;
+        case 'bank': bank += amount; break;
+        case 'mobile_money': mobileMoney += amount; break;
       }
+    }
+    for (final row in creditSales) {
+      credit += (row['total_amount'] as num?)?.toDouble() ?? 0;
     }
 
     return {'cash': cash, 'bank': bank, 'mobile_money': mobileMoney, 'credit': credit};

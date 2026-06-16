@@ -16,7 +16,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   final _repo = ProductRepository();
   late Future<List<Map<String, dynamic>>> _future;
 
-  bool get _canEdit => widget.profile.isOwner;
+  bool get _canEdit => widget.profile.isOwner || widget.profile.isManager;
 
   @override
   void initState() {

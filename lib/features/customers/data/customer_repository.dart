@@ -46,6 +46,9 @@ class CustomerRepository {
     String? location,
     String? notes,
     required bool isActive,
+    double creditLimit = 0,
+    int creditDays = 0,
+    bool creditBlocked = false,
   }) async {
     await sb.from('customers').update({
       'name': name.trim(),
@@ -53,6 +56,9 @@ class CustomerRepository {
       'location': location != null && location.trim().isNotEmpty ? location.trim() : null,
       'notes': notes != null && notes.trim().isNotEmpty ? notes.trim() : null,
       'is_active': isActive,
+      'credit_limit': creditLimit,
+      'credit_days': creditDays,
+      'credit_blocked': creditBlocked,
     }).eq('id', id);
   }
 

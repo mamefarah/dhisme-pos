@@ -8,6 +8,9 @@ class Customer {
     required this.totalBalance,
     this.notes,
     required this.isActive,
+    this.creditLimit = 0,
+    this.creditDays = 0,
+    this.creditBlocked = false,
   });
 
   final String id;
@@ -18,8 +21,13 @@ class Customer {
   final double totalBalance;
   final String? notes;
   final bool isActive;
+  final double creditLimit;
+  final int creditDays;
+  final bool creditBlocked;
 
   bool get hasDebt => totalBalance > 0;
+  bool get hasLimit => creditLimit > 0;
+  double get remainingCredit => hasLimit ? (creditLimit - totalBalance).clamp(0, creditLimit) : double.infinity;
 
   factory Customer.fromMap(Map<String, dynamic> map) => Customer(
         id: map['id'] as String,
@@ -30,5 +38,8 @@ class Customer {
         totalBalance: (map['total_balance'] as num).toDouble(),
         notes: map['notes'] as String?,
         isActive: map['is_active'] as bool? ?? true,
+        creditLimit: (map['credit_limit'] as num?)?.toDouble() ?? 0,
+        creditDays: (map['credit_days'] as num?)?.toInt() ?? 0,
+        creditBlocked: map['credit_blocked'] as bool? ?? false,
       );
 }

@@ -17,7 +17,7 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   final _repo = ReportsRepository();
   _Period _period = _Period.thisMonth;
-  late Future<(Map<String, dynamic>, List<Map<String, dynamic>>)> _future;
+  late Future<(Map<String, dynamic>, List<Map<String, dynamic>>, Map<String, dynamic>)> _future;
 
   (DateTime?, DateTime?) get _dateRange {
     final now = DateTime.now();
@@ -57,9 +57,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _future = Future.wait([
         _repo.salesSummary(from: from, to: to),
         _repo.topProducts(from: from, to: to),
+        _repo.profitSummary(from: from, to: to),
       ]).then((r) => (
         r[0] as Map<String, dynamic>,
         r[1] as List<Map<String, dynamic>>,
+        r[2] as Map<String, dynamic>,
       ));
     });
   }
@@ -107,7 +109,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
           Expanded(
-            child: FutureBuilder<(Map<String, dynamic>, List<Map<String, dynamic>>)>(
+            child: FutureBuilder<(Map<String, dynamic>, List<Map<String, dynamic>>, Map<String, dynamic>)>(
               future: _future,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
@@ -133,7 +135,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 }
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-                final (summary, products) = snapshot.data!;
+                final (summary, products, profit) = snapshot.data!;
                 final total = (summary['total'] as double?) ?? 0;
                 final count = (summary['count'] as int?) ?? 0;
 
@@ -212,6 +214,37 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
+
+                      // Profit card (only shown when cost data is available)
+                      if ((profit['has_cost_data'] as bool? ?? false)) ...[
+                        _SectionCard(
+                          icon: Icons.trending_up,
+                          title: 'Gross Profit — $_periodLabel',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _ProfitRow(
+                                label: 'Revenue',
+                                amount: (profit['total_revenue'] as double?) ?? 0,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              _ProfitRow(
+                                label: 'Cost of Goods',
+                                amount: (profit['total_cost'] as double?) ?? 0,
+                                color: Colors.orange.shade700,
+                              ),
+                              const Divider(height: 16),
+                              _ProfitRow(
+                                label: 'Gross Profit',
+                                amount: (profit['gross_profit'] as double?) ?? 0,
+                                color: Colors.green.shade700,
+                                bold: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
 
                       // Top products card
                       _SectionCard(
@@ -421,6 +454,43 @@ class _ProductRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Profit row ────────────────────────────────────────────────────────────────
+
+class _ProfitRow extends StatelessWidget {
+  const _ProfitRow({required this.label, required this.amount, required this.color, this.bold = false});
+  final String label;
+  final double amount;
+  final Color color;
+  final bool bold;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              color: bold ? Colors.black87 : Colors.black54,
+            ),
+          ),
+        ),
+        Text(
+          money(amount),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+            color: color,
+          ),
+        ),
+      ]),
     );
   }
 }
