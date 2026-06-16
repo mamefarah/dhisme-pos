@@ -1,4 +1,5 @@
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/dates.dart';
 
 class CashClosingRepository {
   Future<String> submit({
@@ -29,6 +30,18 @@ class CashClosingRepository {
       'p_closing_id': id,
       'p_status': status,
     });
+  }
+
+  /// Returns this seller's closing row for today, or null if none exists yet.
+  Future<Map<String, dynamic>?> todayClosing() async {
+    final userId = sb.auth.currentUser?.id;
+    if (userId == null) return null;
+    return await sb
+        .from('daily_cash_closings')
+        .select()
+        .eq('seller_id', userId)
+        .eq('closing_date', todayIsoDate())
+        .maybeSingle() as Map<String, dynamic>?;
   }
 
   /// Returns today's sales totals for the current user, grouped by payment type.
