@@ -33,29 +33,29 @@ class _LoginScreenState extends State<LoginScreen> {
           msg.contains('invalid email or password') ||
           msg.contains('email not found') ||
           msg.contains('wrong password')) {
-        return 'Incorrect email or password. Please check your credentials and try again.';
+        return 'Email-ka ama furaha sirta waa khaldan yahay. Fadlan hubi oo isku day mar kale.';
       }
       if (msg.contains('email not confirmed')) {
-        return 'Please confirm your email address before logging in. Check your inbox.';
+        return 'Fadlan xaqiiji email-kaaga ka hor intaadan soo gelin.';
       }
       if (msg.contains('too many requests') || error.statusCode == '429') {
-        return 'Too many failed attempts. Please wait a few minutes and try again.';
+        return 'Isku dayo badan ayaa dhacay. Sug dhowr daqiiqo kadib mar kale isku day.';
       }
       if (msg.contains('network') || msg.contains('connection')) {
-        return 'Cannot connect to the server. Check your internet connection.';
+        return 'Server-ka lama xiriiri karo. Hubi internet-kaaga.';
       }
-      return 'Login failed: ${error.message}';
+      return 'Soo geliddu way fashilantay: ${error.message}';
     }
     final str = error.toString().toLowerCase();
     if (str.contains('socketexception') ||
         str.contains('failed host lookup') ||
         str.contains('network is unreachable')) {
-      return 'Cannot connect to the server. Check your internet connection.';
+      return 'Server-ka lama xiriiri karo. Hubi internet-kaaga.';
     }
     if (str.contains('timed out') || str.contains('deadline exceeded')) {
-      return 'Connection timed out. Please try again.';
+      return 'Xiriirku wuu daahay. Fadlan mar kale isku day.';
     }
-    return 'An unexpected error occurred. Please try again.';
+    return 'Khalad lama filaan ah ayaa dhacay. Fadlan mar kale isku day.';
   }
 
   Future<void> _submit() async {
@@ -64,7 +64,6 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _loading = true);
     try {
       await _repo.signIn(_emailCtrl.text.trim(), _passwordCtrl.text);
-      // Navigation is handled automatically by AuthGate's auth state listener
     } on AuthException catch (e) {
       if (!mounted) return;
       _showError(_friendlyError(e));
@@ -107,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Icon(Icons.storefront, size: 72, color: cs.primary),
                   const SizedBox(height: 16),
                   Text(
-                    'Dhisme POS',
+                    'Dukaan Dhisme POS',
                     textAlign: TextAlign.center,
                     style: Theme.of(context)
                         .textTheme
@@ -116,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Owner-controlled construction materials store app',
+                    'App-ka iibka, kaydka, deynta iyo xisaabta dukaanka qalabka dhismaha',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
@@ -131,10 +130,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
-                        return 'Email is required';
+                        return 'Email waa loo baahan yahay';
                       }
                       if (!v.trim().contains('@')) {
-                        return 'Enter a valid email address';
+                        return 'Geli email sax ah';
                       }
                       return null;
                     },
@@ -146,21 +145,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: 'Furaha sirta',
                       prefixIcon: const Icon(Icons.lock_outlined),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                         ),
-                        onPressed: () =>
-                            setState(() => _obscurePassword = !_obscurePassword),
-                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        tooltip: _obscurePassword ? 'Muuji furaha' : 'Qari furaha',
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Password is required';
+                      if (v == null || v.isEmpty) return 'Furaha sirta waa loo baahan yahay';
                       return null;
                     },
                   ),
@@ -170,13 +166,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     icon: _loading
                         ? const SizedBox.square(
                             dimension: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.login),
-                    label: const Text('Login'),
+                    label: const Text('Soo gal'),
                   ),
                   const SizedBox(height: 8),
                   TextButton(
@@ -185,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         : () => Navigator.of(context).push(
                               MaterialPageRoute(builder: (_) => const SignupScreen()),
                             ),
-                    child: const Text("Don't have an account? Create one"),
+                    child: const Text('Akoon ma lihid? Samee akoon cusub'),
                   ),
                   TextButton(
                     onPressed: _loading
@@ -193,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         : () => Navigator.of(context).push(
                               MaterialPageRoute(builder: (_) => const JoinScreen()),
                             ),
-                    child: const Text('Join a store with invite code'),
+                    child: const Text('Ku biir dukaan adigoo isticmaalaya invite code'),
                   ),
                 ],
               ),
