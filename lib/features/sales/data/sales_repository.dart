@@ -37,8 +37,21 @@ class SalesRepository {
     return requestId as String;
   }
 
-  /// Returns recent sales for this store, newest first.
-  /// Pass [from] / [to] (UTC) to narrow by date range.
+  Future<String> recordReturn({
+    required String saleId,
+    required List<Map<String, dynamic>> items,
+    required String refundMethod,
+    required String reason,
+  }) async {
+    final returnId = await sb.rpc('record_return', params: {
+      'p_sale_id': saleId,
+      'p_items': items,
+      'p_refund_method': refundMethod,
+      'p_reason': reason,
+    });
+    return returnId as String;
+  }
+
   Future<List<Map<String, dynamic>>> salesHistory({
     int limit = 200,
     DateTime? from,
@@ -53,22 +66,20 @@ class SalesRepository {
         );
 
     if (from != null) query = query.gte('created_at', from.toUtc().toIso8601String());
-    if (to != null)   query = query.lte('created_at', to.toUtc().toIso8601String());
+    if (to != null) query = query.lte('created_at', to.toUtc().toIso8601String());
 
     return List<Map<String, dynamic>>.from(
       await query.order('created_at', ascending: false).limit(limit) as List,
     );
   }
 
-  /// Fetches a single sale with its line items for the receipt.
-  /// Returns null if the sale is not found (caller handles null).
   Future<Map<String, dynamic>?> fetchSaleDetails(String saleId) async {
     try {
       final data = await sb
           .from('sales')
           .select(
             '*, profiles!seller_id(full_name), customers!customer_id(name), '
-            'sale_items(id, product_name, unit, quantity, unit_price, total_price)',
+            'sale_items(id, product_id, product_name, unit, quantity, unit_price, total_price)',
           )
           .eq('id', saleId)
           .maybeSingle();
@@ -87,7 +98,6 @@ class SalesRepository {
     }
   }
 
-  /// Fetches store info for the receipt header. Returns null if unavailable.
   Future<Map<String, dynamic>?> fetchStore(String storeId) async {
     try {
       return await sb.from('stores').select().eq('id', storeId).maybeSingle();
