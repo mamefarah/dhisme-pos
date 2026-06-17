@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/i18n/app_language.dart';
 import '../../../core/utils/errors.dart';
+import '../../../core/utils/money.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/models/app_profile.dart';
 import '../data/supplier_repository.dart';
 import '../models/supplier.dart';
+import 'supplier_detail_screen.dart';
 import 'supplier_form_screen.dart';
 
 class SuppliersScreen extends StatefulWidget {
@@ -44,13 +46,11 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
           Expanded(child: FutureBuilder<List<Supplier>>(
             future: _future,
             builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.error_outline, size: 48, color: Colors.red), const SizedBox(height: 12), Text(friendlyError(snapshot.error!, fallback: context.tr('Alaab-qeybiyeyaasha lama soo gelin karin. Fadlan mar kale isku day.', 'Could not load suppliers. Please try again.')), textAlign: TextAlign.center), const SizedBox(height: 12), FilledButton.icon(onPressed: _reload, icon: const Icon(Icons.refresh), label: Text(context.tr('Mar kale isku day', 'Try Again')))])));
-              }
+              if (snapshot.hasError) return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.error_outline, size: 48, color: Colors.red), const SizedBox(height: 12), Text(friendlyError(snapshot.error!, fallback: context.tr('Alaab-qeybiyeyaasha lama soo gelin karin. Fadlan mar kale isku day.', 'Could not load suppliers. Please try again.')), textAlign: TextAlign.center), const SizedBox(height: 12), FilledButton.icon(onPressed: _reload, icon: const Icon(Icons.refresh), label: Text(context.tr('Mar kale isku day', 'Try Again')))])));
               if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
               final suppliers = snapshot.data!;
               if (suppliers.isEmpty) return EmptyState(message: _activeOnly || _search.text.isNotEmpty ? context.tr('Alaab-qeybiye ku habboon filter-ka lama helin.', 'No suppliers match your filter.') : _canEdit ? context.tr('Weli alaab-qeybiye ma jiro. Taabo + si aad mid ugu darto.', 'No suppliers yet. Tap + to add one.') : context.tr('Weli alaab-qeybiye lama darin.', 'No suppliers added yet.'));
-              return RefreshIndicator(onRefresh: () async => _reload(), child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: suppliers.length, itemBuilder: (context, i) { final s = suppliers[i]; return _SupplierTile(supplier: s, canEdit: _canEdit, onTap: _canEdit ? () async { await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SupplierFormScreen(supplier: s))); _reload(); } : null); }));
+              return RefreshIndicator(onRefresh: () async => _reload(), child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: suppliers.length, itemBuilder: (context, i) { final s = suppliers[i]; return _SupplierTile(supplier: s, canEdit: _canEdit, onTap: () async { await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SupplierDetailScreen(supplier: s))); _reload(); }); }));
             },
           )),
         ]),
@@ -74,13 +74,13 @@ class _SupplierTile extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(backgroundColor: s.isActive ? Colors.teal.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15), child: Icon(Icons.local_shipping_outlined, color: s.isActive ? Colors.teal : Colors.grey, size: 20)),
-        title: Row(children: [Expanded(child: Text(s.name, style: TextStyle(fontWeight: FontWeight.w600, color: s.isActive ? null : Colors.black38))), if (!s.isActive) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Text(context.tr('AAN SHAQAYN', 'INACTIVE'), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade700)))]),
+        title: Row(children: [Expanded(child: Text(s.name, style: TextStyle(fontWeight: FontWeight.w600, color: s.isActive ? null : Colors.black38))), if (s.hasDebt) Text(money(s.totalBalance), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade800)), if (!s.isActive) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Text(context.tr('AAN SHAQAYN', 'INACTIVE'), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade700)))]),
         subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (s.phone != null && s.phone!.isNotEmpty) Row(children: [const Icon(Icons.phone_outlined, size: 12, color: Colors.black45), const SizedBox(width: 4), Text(s.phone!, style: const TextStyle(fontSize: 12))]),
           if (s.contactPerson != null && s.contactPerson!.isNotEmpty) Row(children: [const Icon(Icons.person_outlined, size: 12, color: Colors.black45), const SizedBox(width: 4), Text(s.contactPerson!, style: const TextStyle(fontSize: 12))]),
           if (s.address != null && s.address!.isNotEmpty) Row(children: [const Icon(Icons.location_on_outlined, size: 12, color: Colors.black45), const SizedBox(width: 4), Expanded(child: Text(s.address!, style: const TextStyle(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis))]),
         ]),
-        trailing: canEdit ? const Icon(Icons.chevron_right, color: Colors.black26) : null,
+        trailing: const Icon(Icons.chevron_right, color: Colors.black26),
         isThreeLine: (s.phone != null && s.phone!.isNotEmpty) && (s.contactPerson != null || s.address != null),
       ),
     );
