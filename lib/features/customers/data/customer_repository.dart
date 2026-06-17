@@ -23,13 +23,7 @@ class CustomerRepository {
     return customers;
   }
 
-  Future<void> addCustomer({
-    required String storeId,
-    required String name,
-    String? phone,
-    String? location,
-    String? notes,
-  }) async {
+  Future<void> addCustomer({required String storeId, required String name, String? phone, String? location, String? notes}) async {
     await sb.from('customers').insert({
       'store_id': storeId,
       'name': name.trim(),
@@ -39,17 +33,7 @@ class CustomerRepository {
     });
   }
 
-  Future<void> updateCustomer({
-    required String id,
-    required String name,
-    String? phone,
-    String? location,
-    String? notes,
-    required bool isActive,
-    double creditLimit = 0,
-    int creditDays = 0,
-    bool creditBlocked = false,
-  }) async {
+  Future<void> updateCustomer({required String id, required String name, String? phone, String? location, String? notes, required bool isActive, double creditLimit = 0, int creditDays = 0, bool creditBlocked = false}) async {
     await sb.from('customers').update({
       'name': name.trim(),
       'phone': phone != null && phone.trim().isNotEmpty ? phone.trim() : null,
@@ -83,13 +67,7 @@ class CustomerRepository {
     return data.cast<Map<String, dynamic>>();
   }
 
-  Future<String> recordPayment({
-    required String customerId,
-    required double amount,
-    required String paymentMethod,
-    String? referenceNo,
-    String? notes,
-  }) async {
+  Future<String> recordPayment({required String customerId, required double amount, required String paymentMethod, String? referenceNo, String? notes}) async {
     final result = await sb.rpc('record_customer_payment', params: {
       'p_customer_id': customerId,
       'p_amount': amount,
@@ -99,4 +77,15 @@ class CustomerRepository {
     });
     return result as String;
   }
+
+  Future<Map<String, dynamic>> customerStatement({required String customerId, DateTime? from, DateTime? to}) async {
+    final result = await sb.rpc('customer_statement', params: {
+      'p_customer_id': customerId,
+      'p_from': from == null ? null : _date(from),
+      'p_to': to == null ? null : _date(to),
+    });
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  String _date(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }
