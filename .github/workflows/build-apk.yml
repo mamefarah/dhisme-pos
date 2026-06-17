@@ -41,6 +41,14 @@ jobs:
             flutter create . --project-name dhisme_pos --platforms=android
           fi
 
+      - name: Add Android internet permission
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "android.permission.INTERNET" "$MANIFEST"; then
+            sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
+          fi
+          cat "$MANIFEST"
+
       - name: Show Flutter doctor
         run: flutter doctor -v
 
@@ -56,25 +64,14 @@ jobs:
               rootProject.allprojects { project ->
                   def androidExt = project.extensions.findByName("android")
                   if (androidExt != null) {
-                      try {
-                          androidExt.compileSdk = 36
-                      } catch (Throwable ignored) {
-                          // Some Android Gradle Plugin versions expose only compileSdkVersion().
-                      }
-                      try {
-                          androidExt.compileSdkVersion 36
-                      } catch (Throwable ignored) {
-                          // Some Android Gradle Plugin versions expose only compileSdk property.
-                      }
+                      try { androidExt.compileSdk = 36 } catch (Throwable ignored) {}
+                      try { androidExt.compileSdkVersion 36 } catch (Throwable ignored) {}
                       println("Forced compileSdk 36 for ${project.path}")
                   }
               }
           }
           EOF
-
           echo "android.suppressUnsupportedCompileSdk=36" >> android/gradle.properties
-
-          echo "Patching generated Android app Gradle files to compileSdk 36..."
           if [ -f android/app/build.gradle ]; then
             sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/g' android/app/build.gradle
             sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' android/app/build.gradle
