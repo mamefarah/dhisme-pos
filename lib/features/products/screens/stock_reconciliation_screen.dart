@@ -130,12 +130,13 @@ class _ProductCountRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final counted = double.tryParse(controller.text.trim());
+    final countedText = counted == null ? '' : ' → ${fmt(counted)}';
     final hasChange = counted != null && counted != product.currentStock;
     final delta = counted == null ? 0.0 : counted - product.currentStock;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), child: Row(children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(product.name, style: const TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 2), Text('${context.tr('Nidaam', 'System')}: ${fmt(product.currentStock)} ${product.unit}${hasChange ? ' → ${fmt(counted!)}' : ''}', style: const TextStyle(fontSize: 12, color: Colors.black45))])),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(product.name, style: const TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 2), Text('${context.tr('Nidaam', 'System')}: ${fmt(product.currentStock)} ${product.unit}${hasChange ? countedText : ''}', style: const TextStyle(fontSize: 12, color: Colors.black45))])),
         if (hasChange) Padding(padding: const EdgeInsets.only(right: 8), child: Text('${delta > 0 ? '+' : ''}${fmt(delta)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: delta >= 0 ? Colors.green.shade700 : Colors.orange.shade800))),
         SizedBox(width: 82, child: TextField(controller: controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), textAlign: TextAlign.center, decoration: InputDecoration(hintText: fmt(product.currentStock), isDense: true, border: const OutlineInputBorder()), onChanged: (_) => onChanged())),
       ])),
