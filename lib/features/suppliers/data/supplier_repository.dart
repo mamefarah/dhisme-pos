@@ -48,11 +48,47 @@ class SupplierRepository {
       'name': name.trim(),
       'phone': phone != null && phone.trim().isNotEmpty ? phone.trim() : null,
       'address': address != null && address.trim().isNotEmpty ? address.trim() : null,
-      'contact_person':
-          contactPerson != null && contactPerson.trim().isNotEmpty ? contactPerson.trim() : null,
+      'contact_person': contactPerson != null && contactPerson.trim().isNotEmpty ? contactPerson.trim() : null,
       'notes': notes != null && notes.trim().isNotEmpty ? notes.trim() : null,
       'is_active': isActive,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', id);
+  }
+
+  Future<List<Map<String, dynamic>>> listPurchases(String supplierId) async {
+    final data = await sb
+        .from('purchases')
+        .select('id, invoice_ref, purchase_date, total_amount, paid_amount, balance_amount, payment_status, notes, created_at')
+        .eq('supplier_id', supplierId)
+        .order('purchase_date', ascending: false)
+        .limit(100) as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> listPayments(String supplierId) async {
+    final data = await sb
+        .from('supplier_payments')
+        .select('*, profiles!paid_by(full_name)')
+        .eq('supplier_id', supplierId)
+        .order('created_at', ascending: false)
+        .limit(100) as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<String> recordPayment({
+    required String supplierId,
+    required double amount,
+    required String paymentMethod,
+    String? referenceNo,
+    String? notes,
+  }) async {
+    final id = await sb.rpc('record_supplier_payment', params: {
+      'p_supplier_id': supplierId,
+      'p_amount': amount,
+      'p_payment_method': paymentMethod,
+      'p_reference_no': referenceNo,
+      'p_notes': notes,
+    });
+    return id as String;
   }
 }
