@@ -9,6 +9,7 @@ class Supplier {
     this.notes,
     required this.isActive,
     required this.createdAt,
+    this.totalBalance = 0,
   });
 
   final String id;
@@ -20,6 +21,9 @@ class Supplier {
   final String? notes;
   final bool isActive;
   final DateTime createdAt;
+  final double totalBalance;
+
+  bool get hasDebt => totalBalance > 0;
 
   factory Supplier.fromMap(Map<String, dynamic> m) => Supplier(
         id: m['id'] as String,
@@ -31,5 +35,6 @@ class Supplier {
         notes: m['notes'] as String?,
         isActive: m['is_active'] as bool? ?? true,
         createdAt: DateTime.parse(m['created_at'] as String),
+        totalBalance: (m['total_balance'] as num?)?.toDouble() ?? 0,
       );
 }
