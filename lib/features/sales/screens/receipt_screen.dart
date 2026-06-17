@@ -10,6 +10,7 @@ import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
 import '../../auth/models/app_profile.dart';
 import '../data/sales_repository.dart';
+import 'return_sale_screen.dart';
 
 class ReceiptScreen extends StatefulWidget {
   const ReceiptScreen({super.key, required this.saleId, required this.profile, this.initialData});
@@ -84,6 +85,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   String? get _notes => _sale?['notes'] as String?;
   String? get _referenceNo => _sale?['reference_no'] as String?;
   bool get _isCreditUnpaid => _sale?['sale_type'] == 'credit' && _sale?['payment_status'] != 'paid';
+  bool get _canReturn => (widget.profile.isOwner || widget.profile.isManager) && _sale != null && _items.isNotEmpty && (_sale?['status'] == null || _sale?['status'] == 'completed');
 
   String get _paymentLabel {
     final saleType = _sale?['sale_type'] as String?;
@@ -121,6 +123,13 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   double _itemUnitPrice(Map item) => ((item['unit_price'] ?? item['selling_price'] ?? item['price'] ?? 0) as num).toDouble();
   double _itemTotal(Map item) => ((item['total_price'] ?? item['line_total'] ?? item['subtotal']) as num?)?.toDouble() ?? _itemUnitPrice(item) * _itemQty(item);
   String _fmtQty(double v) => v == v.truncateToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+
+  Future<void> _openReturn() async {
+    final sale = _sale;
+    if (sale == null) return;
+    final changed = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => ReturnSaleScreen(sale: sale)));
+    if (changed == true) _loadDetails();
+  }
 
   Future<void> _printPdf() async {
     setState(() => _generatingPdf = true);
@@ -197,14 +206,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text(_t('WADAR', 'TOTAL'), style: bold(11)), pw.Text(money(_total), style: bold(11))]),
             pw.SizedBox(height: 4),
             _pdfMetaRow(_t('Bixin', 'Payment'), _paymentLabel),
-            if (_isCreditUnpaid) ...[
-              pw.SizedBox(height: 6),
-              pw.Container(
-                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: pw.BoxDecoration(color: PdfColors.white, border: pw.Border.all(width: 1.5, color: black)),
-                child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text(_t('DEYN TAAGAN', 'AMOUNT DUE'), style: bold(10)), pw.Text(money(_total), style: bold(10))]),
-              ),
-            ],
+            if (_isCreditUnpaid) ...[pw.SizedBox(height: 6), pw.Container(padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6), decoration: pw.BoxDecoration(color: PdfColors.white, border: pw.Border.all(width: 1.5, color: black)), child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text(_t('DEYN TAAGAN', 'AMOUNT DUE'), style: bold(10)), pw.Text(money(_total), style: bold(10))]))],
             if (_notes != null && _notes!.isNotEmpty) ...[pw.SizedBox(height: 4), pw.Text('${_t('Qoraal', 'Notes')}: $_notes', style: text(8).copyWith(color: grey))],
             pw.Divider(color: black),
             pw.Center(child: pw.Text(_t('Waad ku mahadsan tahay ganacsigaaga!', 'Thank you for your business!'), style: text(9))),
@@ -216,18 +218,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     return doc.save();
   }
 
-  pw.Widget _pdfMetaRow(String label, String value) => pw.Padding(
-    padding: const pw.EdgeInsets.symmetric(vertical: 1),
-    child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-      pw.SizedBox(width: 48, child: pw.Text(label, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700))),
-      pw.Expanded(child: pw.Text(value, style: const pw.TextStyle(fontSize: 8, color: PdfColors.black))),
-    ]),
-  );
-
-  pw.Widget _pdfTotalRow(String label, String value) => pw.Padding(
-    padding: const pw.EdgeInsets.symmetric(vertical: 1),
-    child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: PdfColors.black)), pw.Text(value, style: const pw.TextStyle(fontSize: 9, color: PdfColors.black))]),
-  );
+  pw.Widget _pdfMetaRow(String label, String value) => pw.Padding(padding: const pw.EdgeInsets.symmetric(vertical: 1), child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [pw.SizedBox(width: 48, child: pw.Text(label, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700))), pw.Expanded(child: pw.Text(value, style: const pw.TextStyle(fontSize: 8, color: PdfColors.black)))]));
+  pw.Widget _pdfTotalRow(String label, String value) => pw.Padding(padding: const pw.EdgeInsets.symmetric(vertical: 1), child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: PdfColors.black)), pw.Text(value, style: const pw.TextStyle(fontSize: 9, color: PdfColors.black))]));
 
   @override
   Widget build(BuildContext context) {
@@ -266,14 +258,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                         if (_storeAddress != null) ...[const SizedBox(height: 2), Text(_storeAddress!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54, fontSize: 13))],
                       ]))),
                       const SizedBox(height: 12),
-                      if (_isCreditUnpaid)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.amber.shade300)),
-                          child: Row(children: [Icon(Icons.schedule, size: 18, color: Colors.amber.shade800), const SizedBox(width: 8), Expanded(child: Text('${context.tr('Bixintu way sugaysaa — deyn taagan', 'Payment pending — amount due')}: ${money(_total)}', style: TextStyle(fontSize: 13, color: Colors.amber.shade900, fontWeight: FontWeight.w600)))]),
-                        ),
+                      if (_isCreditUnpaid) Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.amber.shade300)), child: Row(children: [Icon(Icons.schedule, size: 18, color: Colors.amber.shade800), const SizedBox(width: 8), Expanded(child: Text('${context.tr('Bixintu way sugaysaa — deyn taagan', 'Payment pending — amount due')}: ${money(_total)}', style: TextStyle(fontSize: 13, color: Colors.amber.shade900, fontWeight: FontWeight.w600)))])),
                       Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
                         _MetaRow(label: context.tr('Invoice', 'Invoice'), value: _invoiceNo, bold: true),
                         _MetaRow(label: context.tr('Taariikh', 'Date'), value: _dateLabel),
@@ -285,36 +270,21 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                         if (_notes != null && _notes!.isNotEmpty) _MetaRow(label: context.tr('Qoraal', 'Notes'), value: _notes!),
                       ]))),
                       const SizedBox(height: 12),
-                      if (_loading)
-                        Card(child: Padding(padding: const EdgeInsets.all(24), child: Center(child: Column(children: [const CircularProgressIndicator(), const SizedBox(height: 8), Text(context.tr('Alaabta ayaa la soo gelinayaa…', 'Loading items…'), style: const TextStyle(color: Colors.black45))]))))
-                      else
-                        Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(context.tr('Alaabta', 'Items'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          if (_error != null && _items.isEmpty) Text(_error!, style: const TextStyle(color: Colors.black45, fontSize: 13))
-                          else if (_items.isEmpty) Text(context.tr('Faahfaahinta alaabta iibkan lama heli karo.', 'Item details not available for this sale.'), style: const TextStyle(color: Colors.black45, fontSize: 13))
-                          else ...[
-                            const Divider(height: 1),
-                            for (final item in _items) ...[
-                              const SizedBox(height: 10),
-                              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_itemName(item), style: const TextStyle(fontWeight: FontWeight.w600)), Text('${_fmtQty(_itemQty(item))} ${_itemUnit(item)}  ×  ${money(_itemUnitPrice(item))}', style: const TextStyle(fontSize: 12, color: Colors.black54))])),
-                                Text(money(_itemTotal(item)), style: const TextStyle(fontWeight: FontWeight.w600)),
-                              ]),
-                            ],
-                            const SizedBox(height: 10),
-                            const Divider(height: 1),
-                          ],
-                        ]))),
-                      const SizedBox(height: 12),
-                      Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
-                        if (_discount > 0) ...[_MetaRow(label: context.tr('Subtotal', 'Subtotal'), value: money(_subtotal)), _MetaRow(label: context.tr('Dhimis', 'Discount'), value: '− ${money(_discount)}', valueColor: Colors.red)],
-                        _MetaRow(label: context.tr('Wadar', 'Total'), value: money(_total), bold: true, valueColor: cs.primary),
+                      if (_loading) Card(child: Padding(padding: const EdgeInsets.all(24), child: Center(child: Column(children: [const CircularProgressIndicator(), const SizedBox(height: 8), Text(context.tr('Alaabta ayaa la soo gelinayaa…', 'Loading items…'), style: const TextStyle(color: Colors.black45))]))))
+                      else Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(context.tr('Alaabta', 'Items'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        if (_error != null && _items.isEmpty) Text(_error!, style: const TextStyle(color: Colors.black45, fontSize: 13))
+                        else if (_items.isEmpty) Text(context.tr('Faahfaahinta alaabta iibkan lama heli karo.', 'Item details not available for this sale.'), style: const TextStyle(color: Colors.black45, fontSize: 13))
+                        else ...[const Divider(height: 1), for (final item in _items) ...[const SizedBox(height: 10), Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_itemName(item), style: const TextStyle(fontWeight: FontWeight.w600)), Text('${_fmtQty(_itemQty(item))} ${_itemUnit(item)}  ×  ${money(_itemUnitPrice(item))}', style: const TextStyle(fontSize: 12, color: Colors.black54))])), Text(money(_itemTotal(item)), style: const TextStyle(fontWeight: FontWeight.w600))])], const SizedBox(height: 10), const Divider(height: 1)],
                       ]))),
+                      const SizedBox(height: 12),
+                      Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [if (_discount > 0) ...[_MetaRow(label: context.tr('Subtotal', 'Subtotal'), value: money(_subtotal)), _MetaRow(label: context.tr('Dhimis', 'Discount'), value: '− ${money(_discount)}', valueColor: Colors.red)], _MetaRow(label: context.tr('Wadar', 'Total'), value: money(_total), bold: true, valueColor: cs.primary)]))),
                       const SizedBox(height: 24),
                       SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: _generatingPdf ? null : _printPdf, icon: _generatingPdf ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.print_outlined), label: Text(context.tr('Daabac Rasiid', 'Print Receipt')))),
                       const SizedBox(height: 8),
                       SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: _generatingPdf ? null : _sharePdf, icon: const Icon(Icons.share_outlined), label: Text(context.tr('Wadaag PDF', 'Share PDF')))),
+                      if (_canReturn) ...[const SizedBox(height: 8), SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: _openReturn, icon: const Icon(Icons.undo_outlined), label: Text(context.tr('Diiwaangeli Celin / Refund', 'Record Return / Refund'))))],
                       const SizedBox(height: 12),
                     ]),
                   ),
