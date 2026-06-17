@@ -1,6 +1,6 @@
 # DUKAAN DHISME POS - PHASE 1 AND PHASE 2 IMPLEMENTATION
 
-Status: Partly implemented and partly prepared for UI connection.
+Status: Phase 1 backend/security is implemented. Phase 2 backend and first Flutter UI connection are implemented.
 Date: 2026-06-17
 
 ## PHASE 1 - SECURITY AND RELEASE SIGNING
@@ -42,7 +42,7 @@ Enable leaked password protection:
 
 ## RELEASE SIGNING
 
-GitHub Actions now supports optional APK signing.
+GitHub Actions supports optional APK signing.
 
 Add these GitHub repository secrets:
 
@@ -51,7 +51,7 @@ Add these GitHub repository secrets:
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-The workflow signs the APK only when all four secrets exist. If the secrets are missing, the build still continues normally.
+The workflow signs the APK only when all four secrets exist. If the secrets are missing, the build continues normally.
 
 ## PHASE 2 - BUSINESS MODULES
 
@@ -89,14 +89,35 @@ Updated RPC:
 
 - `record_purchase` now maintains supplier debt when purchases are unpaid or partially paid.
 
-## NEXT UI WORK
+## PHASE 2 - FLUTTER UI CONNECTION
 
-The database is ready. The next UI layer should connect these modules:
+Completed Flutter UI connection:
 
-- Expenses screen and add expense form.
-- Supplier detail screen with supplier balance and payment form.
-- Return/refund screen from receipt or sales history.
-- Customer statement PDF button from customer detail.
+- Expenses screen.
+- Add expense form.
+- Settings entry for expenses.
+- Supplier balance field.
+- Supplier detail screen.
+- Supplier payment form.
+- Supplier list now opens supplier detail.
+- Return/refund screen.
+- Receipt screen now has return/refund action for owner/manager.
+- Customer statement repository method.
+- Customer statement PDF screen.
+- Customer detail now has Statement PDF button.
+
+## TEST CHECKLIST
+
+After GitHub Actions builds green, test this order:
+
+1. Open Settings and open Expenses.
+2. Add one expense.
+3. Open Suppliers.
+4. Open a supplier detail page.
+5. Create an unpaid or partial purchase and confirm supplier balance updates.
+6. Record supplier payment.
+7. Open a receipt as owner/manager and record return/refund.
+8. Open customer detail and share Statement PDF.
 
 ## SAFETY NOTE
 
