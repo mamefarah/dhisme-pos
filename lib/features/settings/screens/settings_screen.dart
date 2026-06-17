@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_language.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/models/app_profile.dart';
@@ -15,109 +16,101 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = AuthRepository();
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Profile card
-          Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                child: Text(
-                  profile.fullName.isNotEmpty ? profile.fullName[0].toUpperCase() : '?',
+      appBar: AppBar(title: Text(context.tr('Dejinta', 'Settings'))),
+      body: AnimatedBuilder(
+        animation: AppLanguage.instance,
+        builder: (context, _) => ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Text(profile.fullName.isNotEmpty ? profile.fullName[0].toUpperCase() : '?'),
+                ),
+                title: Text(profile.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(
+                  '${_roleLabel(context, profile.role)} • ${profile.phone ?? context.tr('Telefoon ma jiro', 'No phone')}\n'
+                  'ID: ${sb.auth.currentUser?.id.substring(0, 8) ?? ''}…',
                 ),
               ),
-              title: Text(profile.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(
-                '${_roleLabel(profile.role)} • ${profile.phone ?? 'No phone'}\n'
-                'ID: ${sb.auth.currentUser?.id.substring(0, 8) ?? ''}…',
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Owner/manager: Store settings + stock count
-          if (profile.isOwner || profile.isManager) ...[
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.storefront_outlined),
-                title: const Text('Store Settings'),
-                subtitle: const Text('Name, phone, and address shown on receipts'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => StoreSettingsScreen(profile: profile),
-                )),
-              ),
             ),
             const SizedBox(height: 12),
             Card(
-              child: ListTile(
-                leading: const Icon(Icons.inventory_2_outlined),
-                title: const Text('Stock Count'),
-                subtitle: const Text('Enter physical counts to reconcile system stock'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => StockReconciliationScreen(profile: profile),
-                )),
+              child: SwitchListTile(
+                secondary: const Icon(Icons.language_outlined),
+                title: Text(context.tr('Luuqadda app-ka', 'App language')),
+                subtitle: Text(context.tr('Soomaali / English', 'English / Somali')),
+                value: AppLanguage.instance.isSomali,
+                onChanged: (v) => AppLanguage.instance.setLanguage(v ? 'so' : 'en'),
               ),
             ),
             const SizedBox(height: 12),
+            if (profile.isOwner || profile.isManager) ...[
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.storefront_outlined),
+                  title: Text(context.tr('Dejinta Dukaanka', 'Store Settings')),
+                  subtitle: Text(context.tr('Magaca, telefoonka iyo cinwaanka rasiidka', 'Name, phone, and address shown on receipts')),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => StoreSettingsScreen(profile: profile))),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.inventory_2_outlined),
+                  title: Text(context.tr('Tirinta Kaydka', 'Stock Count')),
+                  subtitle: Text(context.tr('Geli tirada dhabta ah si kaydka loo saxo', 'Enter physical counts to reconcile system stock')),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => StockReconciliationScreen(profile: profile))),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (profile.isOwner) ...[
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.bar_chart_outlined),
+                  title: Text(context.tr('Warbixinta Iibka', 'Sales Reports')),
+                  subtitle: Text(context.tr('Dakhliga muddada iyo alaabta ugu iibka badan', 'Revenue by period and top-selling products')),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReportsScreen(profile: profile))),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.group_outlined),
+                  title: Text(context.tr('Maamul Shaqaalaha', 'Manage Employees')),
+                  subtitle: Text(context.tr('Ku dar, wax ka beddel, ama dami shaqaalaha', 'Add, edit, and deactivate team members')),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EmployeesScreen(profile: profile))),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            FilledButton.icon(
+              onPressed: () => _confirmLogout(context, repo),
+              icon: const Icon(Icons.logout),
+              label: Text(context.tr('Ka bax', 'Logout')),
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            ),
+            const SizedBox(height: 24),
+            const Text('Dukaan Dhisme POS', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black38)),
           ],
-
-          // Owner-only: Reports + Employee management
-          if (profile.isOwner) ...[
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.bar_chart_outlined),
-                title: const Text('Sales Reports'),
-                subtitle: const Text('Revenue by period and top-selling products'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ReportsScreen(profile: profile),
-                )),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.group_outlined),
-                title: const Text('Manage Employees'),
-                subtitle: const Text('Add, edit, and deactivate team members'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => EmployeesScreen(profile: profile),
-                )),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          // Logout
-          FilledButton.icon(
-            onPressed: () => _confirmLogout(context, repo),
-            icon: const Icon(Icons.logout),
-            label: const Text('Logout'),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-          ),
-
-          const SizedBox(height: 24),
-          Text(
-            'Dhisme POS',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.black38),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  String _roleLabel(String role) {
+  String _roleLabel(BuildContext context, String role) {
     switch (role) {
-      case 'owner':   return 'Owner';
-      case 'manager': return 'Manager';
-      default:        return 'Seller';
+      case 'owner':
+        return context.tr('Milkiile', 'Owner');
+      case 'manager':
+        return context.tr('Maamule', 'Manager');
+      default:
+        return context.tr('Iibiye', 'Seller');
     }
   }
 
@@ -125,17 +118,11 @@ class SettingsScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text(context.tr('Ka bax', 'Logout')),
+        content: Text(context.tr('Ma hubtaa inaad ka baxayso?', 'Are you sure you want to logout?')),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Logout'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.tr('Jooji', 'Cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(context.tr('Ka bax', 'Logout'))),
         ],
       ),
     );
