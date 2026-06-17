@@ -11,7 +11,7 @@ class DhismePosApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Dhisme POS',
+      title: 'Dukaan Dhisme POS',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       home: isConfigured ? const AuthGate() : const ConfigMissingScreen(),
