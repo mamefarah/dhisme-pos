@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_language.dart';
 import '../../../core/utils/dates.dart';
 import '../../../core/utils/errors.dart';
 import '../../../core/utils/money.dart';
@@ -22,161 +23,53 @@ class _OwnerCashClosingsScreenState extends State<OwnerCashClosingsScreen> {
   _StatusFilter _filter = _StatusFilter.submitted;
 
   @override
-  void initState() {
-    super.initState();
-    _reload();
-  }
-
-  void _reload() {
-    setState(() {
-      _future = _repo.listClosings(
-        status: _filter == _StatusFilter.all ? null : _filter.name,
-      );
-    });
-  }
+  void initState() { super.initState(); _reload(); }
+  void _reload() => setState(() => _future = _repo.listClosings(status: _filter == _StatusFilter.all ? null : _filter.name));
 
   Future<void> _review(String id, String status) async {
-    try {
-      await _repo.review(id, status);
-      _reload();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(SnackBar(
-            content: Text(friendlyError(e, fallback: 'Could not process this decision. Please try again.')),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 5),
-          ));
-      }
-    }
+    try { await _repo.review(id, status); _reload(); }
+    catch (e) { if (mounted) { ScaffoldMessenger.of(context)..clearSnackBars()..showSnackBar(SnackBar(content: Text(friendlyError(e, fallback: context.tr('Go’aankan lama fulin karin. Fadlan mar kale isku day.', 'Could not process this decision. Please try again.'))), backgroundColor: Theme.of(context).colorScheme.error, behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 5))); } }
   }
 
   Future<void> _confirmAndReview(String id, String status) async {
-    final label = status == 'approved' ? 'approve' : 'reject';
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('${label[0].toUpperCase()}${label.substring(1)} closing?'),
-        content: Text('Are you sure you want to $label this cash closing?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(
-            style: status == 'rejected'
-                ? FilledButton.styleFrom(backgroundColor: Colors.red.shade700)
-                : null,
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(label[0].toUpperCase() + label.substring(1)),
-          ),
-        ],
-      ),
-    );
+    final isApprove = status == 'approved';
+    final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: Text(isApprove ? context.tr('Ansixi xiritaanka?', 'Approve closing?') : context.tr('Diid xiritaanka?', 'Reject closing?')),
+      content: Text(isApprove ? context.tr('Ma hubtaa inaad ansixinayso xiritaanka lacagta?', 'Are you sure you want to approve this cash closing?') : context.tr('Ma hubtaa inaad diidayso xiritaanka lacagta?', 'Are you sure you want to reject this cash closing?')),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.tr('Jooji', 'Cancel'))), FilledButton(style: isApprove ? null : FilledButton.styleFrom(backgroundColor: Colors.red.shade700), onPressed: () => Navigator.pop(ctx, true), child: Text(isApprove ? context.tr('Ansixi', 'Approve') : context.tr('Diid', 'Reject')))],
+    ));
     if (confirmed == true) await _review(id, status);
+  }
+
+  String _chipLabel(BuildContext context, _StatusFilter f) {
+    switch (f) { case _StatusFilter.submitted: return context.tr('La gudbiyay', 'Submitted'); case _StatusFilter.all: return context.tr('Dhammaan', 'All'); case _StatusFilter.approved: return context.tr('La ansixiyay', 'Approved'); case _StatusFilter.rejected: return context.tr('La diiday', 'Rejected'); }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cash Closings'),
-        actions: [IconButton(onPressed: _reload, icon: const Icon(Icons.refresh))],
-      ),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              children: [
-                _Chip(
-                  label: 'Submitted',
-                  selected: _filter == _StatusFilter.submitted,
-                  color: Colors.orange,
-                  onTap: () { setState(() => _filter = _StatusFilter.submitted); _reload(); },
-                ),
-                const SizedBox(width: 8),
-                _Chip(
-                  label: 'All',
-                  selected: _filter == _StatusFilter.all,
-                  onTap: () { setState(() => _filter = _StatusFilter.all); _reload(); },
-                ),
-                const SizedBox(width: 8),
-                _Chip(
-                  label: 'Approved',
-                  selected: _filter == _StatusFilter.approved,
-                  color: Colors.green,
-                  onTap: () { setState(() => _filter = _StatusFilter.approved); _reload(); },
-                ),
-                const SizedBox(width: 8),
-                _Chip(
-                  label: 'Rejected',
-                  selected: _filter == _StatusFilter.rejected,
-                  color: Colors.red,
-                  onTap: () { setState(() => _filter = _StatusFilter.rejected); _reload(); },
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _future,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                        const SizedBox(height: 12),
-                        Text(
-                          friendlyError(snapshot.error!, fallback: 'Could not load cash closings. Please try again.'),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: _reload,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Try Again'),
-                        ),
-                      ]),
-                    ),
-                  );
-                }
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-                final rows = snapshot.data!;
-                if (rows.isEmpty) {
-                  return EmptyState(
-                    message: _filter == _StatusFilter.submitted
-                        ? 'No submissions waiting for review.'
-                        : 'No cash closings found.',
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: () async => _reload(),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: rows.length,
-                    itemBuilder: (context, i) => _ClosingCard(
-                      data: rows[i],
-                      onApprove: () => _confirmAndReview(rows[i]['id'] as String, 'approved'),
-                      onReject: () => _confirmAndReview(rows[i]['id'] as String, 'rejected'),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+    return AnimatedBuilder(
+      animation: AppLanguage.instance,
+      builder: (context, _) => Scaffold(
+        appBar: AppBar(title: Text(context.tr('Xiritaanka Lacagta', 'Cash Closings')), actions: [IconButton(onPressed: _reload, icon: const Icon(Icons.refresh), tooltip: context.tr('Cusboonaysii', 'Refresh'))]),
+        body: Column(children: [
+          SizedBox(height: 44, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), children: [
+            for (final f in _StatusFilter.values) ...[ _Chip(label: _chipLabel(context, f), selected: _filter == f, onTap: () { setState(() => _filter = f); _reload(); }, color: f == _StatusFilter.approved ? Colors.green : f == _StatusFilter.rejected ? Colors.red : f == _StatusFilter.submitted ? Colors.orange : null), const SizedBox(width: 8) ],
+          ])),
+          Expanded(child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) return _ErrorView(error: snapshot.error!, onRetry: _reload);
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final rows = snapshot.data!;
+              if (rows.isEmpty) return EmptyState(message: _filter == _StatusFilter.submitted ? context.tr('Xiritaan sugaya dib-u-eegis ma jiro.', 'No submissions waiting for review.') : context.tr('Xiritaan lacag lama helin.', 'No cash closings found.'));
+              return RefreshIndicator(onRefresh: () async => _reload(), child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: rows.length, itemBuilder: (context, i) => _ClosingCard(data: rows[i], onApprove: () => _confirmAndReview(rows[i]['id'] as String, 'approved'), onReject: () => _confirmAndReview(rows[i]['id'] as String, 'rejected'))));
+            },
+          )),
+        ]),
       ),
     );
   }
 }
-
-// ── Closing card ──────────────────────────────────────────────────────────────
 
 class _ClosingCard extends StatelessWidget {
   const _ClosingCard({required this.data, required this.onApprove, required this.onReject});
@@ -195,206 +88,49 @@ class _ClosingCard extends StatelessWidget {
   double get _credit => (data['credit_sales_total'] as num?)?.toDouble() ?? 0;
   String? get _notes => data['notes'] as String?;
 
-  String get _submittedAt {
-    final raw = data['created_at'] as String?;
-    if (raw == null) return '—';
-    final dt = DateTime.tryParse(raw);
-    return dt != null ? formatDateTime(dt) : raw;
-  }
-
-  Color _statusColor() {
-    switch (_status) {
-      case 'approved': return Colors.green.shade700;
-      case 'rejected': return Colors.red.shade700;
-      default: return Colors.orange.shade700;
-    }
-  }
-
-  String get _statusLabel {
-    switch (_status) {
-      case 'approved': return 'Approved';
-      case 'rejected': return 'Rejected';
-      default: return 'Submitted';
-    }
-  }
+  String _statusLabel(BuildContext context) { switch (_status) { case 'approved': return context.tr('La ansixiyay', 'Approved'); case 'rejected': return context.tr('La diiday', 'Rejected'); default: return context.tr('La gudbiyay', 'Submitted'); } }
+  Color _statusColor() { switch (_status) { case 'approved': return Colors.green.shade700; case 'rejected': return Colors.red.shade700; default: return Colors.orange.shade700; } }
+  String _submittedAt() { final raw = data['created_at'] as String?; if (raw == null) return '—'; final dt = DateTime.tryParse(raw); return dt != null ? formatDateTime(dt) : raw; }
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor();
     final diff = _difference;
     final diffColor = diff < 0 ? Colors.red.shade700 : Colors.green.shade700;
-    final diffLabel = diff == 0
-        ? 'Exact match'
-        : diff > 0
-            ? '+ ${money(diff)} surplus'
-            : '− ${money(diff.abs())} shortage';
-
+    final diffLabel = diff == 0 ? context.tr('Isku mid', 'Exact match') : diff > 0 ? '+ ${money(diff)} ${context.tr('dheeraad', 'surplus')}' : '− ${money(diff.abs())} ${context.tr('yaraan', 'shortage')}';
+    final statusColor = _statusColor();
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: date + status
-            Row(children: [
-              Expanded(
-                child: Text(
-                  _date,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _statusLabel,
-                  style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 4),
-            // Seller
-            Row(children: [
-              const Icon(Icons.badge_outlined, size: 14, color: Colors.black45),
-              const SizedBox(width: 4),
-              Text(_sellerName, style: const TextStyle(fontSize: 13, color: Colors.black54)),
-              const Spacer(),
-              const Icon(Icons.schedule, size: 13, color: Colors.black45),
-              const SizedBox(width: 4),
-              Text(_submittedAt, style: const TextStyle(fontSize: 11, color: Colors.black45)),
-            ]),
-            const SizedBox(height: 10),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
-
-            // Cash comparison
-            _Row(label: 'Expected in drawer', value: money(_expected)),
-            _Row(label: 'Actual cash counted', value: money(_actual)),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: diffColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: diffColor.withValues(alpha: 0.25)),
-              ),
-              child: Row(children: [
-                Icon(
-                  diff < 0 ? Icons.arrow_downward : Icons.arrow_upward,
-                  size: 14,
-                  color: diffColor,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Difference',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: diffColor),
-                  ),
-                ),
-                Text(
-                  diffLabel,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: diffColor),
-                ),
-              ]),
-            ),
-
-            // Other payment totals (only show if non-zero)
-            if (_bank > 0 || _mobile > 0 || _credit > 0) ...[
-              const SizedBox(height: 10),
-              const Divider(height: 1),
-              const SizedBox(height: 8),
-              if (_bank > 0)
-                _Row(
-                  label: 'Bank transfers',
-                  value: money(_bank),
-                  icon: Icons.account_balance_outlined,
-                ),
-              if (_mobile > 0)
-                _Row(
-                  label: 'Mobile money',
-                  value: money(_mobile),
-                  icon: Icons.phone_android_outlined,
-                ),
-              if (_credit > 0)
-                _Row(
-                  label: 'Credit sales',
-                  value: money(_credit),
-                  icon: Icons.credit_score_outlined,
-                ),
-            ],
-
-            // Notes
-            if (_notes != null && _notes!.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Icon(Icons.notes_outlined, size: 14, color: Colors.grey.shade600),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text(_notes!, style: const TextStyle(fontSize: 12))),
-                ]),
-              ),
-            ],
-
-            // Action buttons
-            if (_status == 'submitted') ...[
-              const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: onApprove,
-                    icon: const Icon(Icons.check, size: 18),
-                    label: const Text('Approve'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onReject,
-                    icon: const Icon(Icons.close, size: 18),
-                    label: const Text('Reject'),
-                    style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700),
-                  ),
-                ),
-              ]),
-            ],
-          ],
-        ),
-      ),
+      child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [Expanded(child: Text(_date, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)), child: Text(_statusLabel(context), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)))]),
+        const SizedBox(height: 4),
+        Row(children: [const Icon(Icons.badge_outlined, size: 14, color: Colors.black45), const SizedBox(width: 4), Expanded(child: Text(_sellerName, style: const TextStyle(fontSize: 13, color: Colors.black54))), const Icon(Icons.schedule, size: 13, color: Colors.black45), const SizedBox(width: 4), Text(_submittedAt(), style: const TextStyle(fontSize: 11, color: Colors.black45))]),
+        const SizedBox(height: 10), const Divider(height: 1), const SizedBox(height: 10),
+        _Row(label: context.tr('La filayay', 'Expected in drawer'), value: money(_expected)),
+        _Row(label: context.tr('La tiriyay', 'Actual cash counted'), value: money(_actual)),
+        const SizedBox(height: 4),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7), decoration: BoxDecoration(color: diffColor.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: diffColor.withValues(alpha: 0.25))), child: Row(children: [Expanded(child: Text(context.tr('Farqi', 'Difference'), style: TextStyle(fontWeight: FontWeight.w600, color: diffColor))), Text(diffLabel, style: TextStyle(fontWeight: FontWeight.bold, color: diffColor))])),
+        if (_bank > 0 || _mobile > 0 || _credit > 0) ...[const SizedBox(height: 10), const Divider(height: 1), const SizedBox(height: 8), if (_bank > 0) _Row(label: context.tr('Bangiga', 'Bank transfers'), value: money(_bank)), if (_mobile > 0) _Row(label: 'Mobile Money', value: money(_mobile)), if (_credit > 0) _Row(label: context.tr('Iib deyn ah', 'Credit sales'), value: money(_credit))],
+        if (_notes != null && _notes!.isNotEmpty) ...[const SizedBox(height: 10), Text('${context.tr('Qoraal', 'Notes')}: $_notes', style: const TextStyle(fontSize: 12, color: Colors.black54))],
+        if (_status == 'submitted') ...[const SizedBox(height: 12), Row(children: [Expanded(child: FilledButton.icon(onPressed: onApprove, icon: const Icon(Icons.check, size: 18), label: Text(context.tr('Ansixi', 'Approve')))), const SizedBox(width: 8), Expanded(child: OutlinedButton.icon(onPressed: onReject, icon: const Icon(Icons.close, size: 18), label: Text(context.tr('Diid', 'Reject')), style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700)))])],
+      ])),
     );
   }
 }
 
-// ── Small helpers ─────────────────────────────────────────────────────────────
-
 class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value, this.icon});
+  const _Row({required this.label, required this.value});
   final String label;
   final String value;
-  final IconData? icon;
-
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(children: [
-        if (icon != null) ...[
-          Icon(icon, size: 14, color: Colors.black45),
-          const SizedBox(width: 4),
-        ],
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54))),
-        Text(value, style: const TextStyle(fontSize: 13)),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(vertical: 3), child: Row(children: [Expanded(child: Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54))), Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))]));
+}
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.error, required this.onRetry});
+  final Object error;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.error_outline, size: 48, color: Colors.red), const SizedBox(height: 12), Text(friendlyError(error, fallback: context.tr('Xiritaanka lacagta lama soo gelin karin. Fadlan mar kale isku day.', 'Could not load cash closings. Please try again.')), textAlign: TextAlign.center), const SizedBox(height: 12), FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: Text(context.tr('Mar kale isku day', 'Try Again')))])));
 }
 
 class _Chip extends StatelessWidget {
@@ -403,29 +139,6 @@ class _Chip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final Color? color;
-
   @override
-  Widget build(BuildContext context) {
-    final c = color ?? Theme.of(context).colorScheme.primary;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? c.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? c : Colors.grey.shade300),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-            color: selected ? c : Colors.black54,
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) { final c = color ?? Theme.of(context).colorScheme.primary; return GestureDetector(onTap: onTap, child: AnimatedContainer(duration: const Duration(milliseconds: 150), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6), decoration: BoxDecoration(color: selected ? c.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(20), border: Border.all(color: selected ? c : Colors.grey.shade300)), child: Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: selected ? c : Colors.black54)))); }
 }
