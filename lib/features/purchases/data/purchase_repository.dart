@@ -1,4 +1,5 @@
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/idempotency.dart';
 import '../models/purchase.dart';
 
 class PurchaseRepository {
@@ -25,16 +26,20 @@ class PurchaseRepository {
     String? supplierId,
     String? invoiceRef,
     required DateTime purchaseDate,
-    required String paymentStatus,
+    required double paidAmount,
+    required String paymentMethod,
     String? notes,
+    String? idempotencyKey,
   }) async {
-    final result = await sb.rpc('record_purchase', params: {
+    final result = await sb.rpc('record_purchase_v2', params: {
       'p_items': items,
       'p_supplier_id': supplierId,
       'p_invoice_ref': invoiceRef,
       'p_purchase_date': purchaseDate.toIso8601String().substring(0, 10),
-      'p_payment_status': paymentStatus,
+      'p_paid_amount': paidAmount,
+      'p_payment_method': paymentMethod,
       'p_notes': notes,
+      'p_idempotency_key': idempotencyKey ?? newOperationKey('purchase'),
     });
     return result as String;
   }
