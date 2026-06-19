@@ -126,7 +126,7 @@ class _ReturnSaleScreenState extends State<ReturnSaleScreen> {
                 DropdownButtonFormField<String>(value: _refundMethod, decoration: InputDecoration(labelText: context.tr('Qaabka celinta lacagta', 'Refund method'), prefixIcon: const Icon(Icons.payments_outlined)), items: [
                   DropdownMenuItem(value: 'cash', child: Text(context.tr('Caddaan', 'Cash'))),
                   DropdownMenuItem(value: 'bank', child: Text(context.tr('Bangiga', 'Bank'))),
-                  const DropdownMenuItem(value: 'mobile_money', child: Text('Mobile Money')),
+                  DropdownMenuItem(value: 'mobile_money', child: Text(context.tr('Lacagta dhijitaalka', 'Mobile Money'))),
                   DropdownMenuItem(value: 'credit_adjustment', child: Text(context.tr('Ka jar deynta', 'Credit adjustment'))),
                 ], onChanged: (v) { if (v != null) setState(() => _refundMethod = v); }),
                 const SizedBox(height: 12),

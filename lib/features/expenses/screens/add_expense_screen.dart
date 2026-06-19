@@ -33,7 +33,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(context: context, initialDate: _date, firstDate: DateTime(2020), lastDate: DateTime.now());
-    if (picked != null) setState(() => _date = picked);
+    if (picked != null && mounted) setState(() => _date = picked);
   }
 
   Future<void> _save() async {
@@ -111,7 +111,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               items: [
                 DropdownMenuItem(value: 'cash', child: Text(context.tr('Caddaan', 'Cash'))),
                 DropdownMenuItem(value: 'bank', child: Text(context.tr('Bangiga', 'Bank'))),
-                const DropdownMenuItem(value: 'mobile_money', child: Text('Mobile Money')),
+                DropdownMenuItem(value: 'mobile_money', child: Text(context.tr('Lacagta dhijitaalka', 'Mobile Money'))),
               ],
               onChanged: (v) { if (v != null) setState(() => _paymentMethod = v); },
             ),

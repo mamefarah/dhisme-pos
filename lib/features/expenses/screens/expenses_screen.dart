@@ -25,7 +25,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _paymentLabel(BuildContext context, String method) {
     switch (method) {
       case 'bank': return context.tr('Bangiga', 'Bank');
-      case 'mobile_money': return 'Mobile Money';
+      case 'mobile_money': return context.tr('Lacagta dhijitaalka', 'Mobile Money');
       default: return context.tr('Caddaan', 'Cash');
     }
   }

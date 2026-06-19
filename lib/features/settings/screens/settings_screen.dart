@@ -27,7 +27,7 @@ class SettingsScreen extends StatelessWidget {
               child: ListTile(
                 leading: CircleAvatar(child: Text(profile.fullName.isNotEmpty ? profile.fullName[0].toUpperCase() : '?')),
                 title: Text(profile.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('${_roleLabel(context, profile.role)} • ${profile.phone ?? context.tr('Telefoon ma jiro', 'No phone')}\nID: ${sb.auth.currentUser?.id.substring(0, 8) ?? ''}…'),
+                subtitle: Text('${_roleLabel(context, profile.role)} • ${profile.phone ?? context.tr('Telefoon ma jiro', 'No phone')}\nID: ${(sb.auth.currentUser?.id ?? '').substring(0, (sb.auth.currentUser?.id ?? '').length.clamp(0, 8))}…'),
               ),
             ),
             const SizedBox(height: 12),
