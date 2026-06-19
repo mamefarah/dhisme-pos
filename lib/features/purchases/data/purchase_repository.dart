@@ -21,7 +21,27 @@ class PurchaseRepository {
     return data.map((e) => PurchaseItem.fromMap(e as Map<String, dynamic>)).toList();
   }
 
+  /// Compatibility path for the legacy screen. New UI should call [recordPurchaseV2].
   Future<String> recordPurchase({
+    required List<Map<String, dynamic>> items,
+    String? supplierId,
+    String? invoiceRef,
+    required DateTime purchaseDate,
+    required String paymentStatus,
+    String? notes,
+  }) async {
+    final result = await sb.rpc('record_purchase', params: {
+      'p_items': items,
+      'p_supplier_id': supplierId,
+      'p_invoice_ref': invoiceRef,
+      'p_purchase_date': purchaseDate.toIso8601String().substring(0, 10),
+      'p_payment_status': paymentStatus,
+      'p_notes': notes,
+    });
+    return result as String;
+  }
+
+  Future<String> recordPurchaseV2({
     required List<Map<String, dynamic>> items,
     String? supplierId,
     String? invoiceRef,
