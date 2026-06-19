@@ -70,8 +70,10 @@ class FinancialRules {
     required double sold,
     required double alreadyReturned,
   }) {
-    if (sold < 0 || alreadyReturned < 0) throw ArgumentError('Quantities cannot be negative');
-    return (sold - alreadyReturned).clamp(0, double.infinity);
+    if (sold < 0 || alreadyReturned < 0) {
+      throw ArgumentError('Quantities cannot be negative');
+    }
+    return (sold - alreadyReturned).clamp(0.0, double.infinity).toDouble();
   }
 
   static bool returnQuantityAllowed({
@@ -80,7 +82,11 @@ class FinancialRules {
     required double requested,
   }) {
     if (requested <= 0) return false;
-    return requested <= remainingReturnable(sold: sold, alreadyReturned: alreadyReturned) + tolerance;
+    return requested <= remainingReturnable(
+          sold: sold,
+          alreadyReturned: alreadyReturned,
+        ) +
+        tolerance;
   }
 
   static double expectedCash({
