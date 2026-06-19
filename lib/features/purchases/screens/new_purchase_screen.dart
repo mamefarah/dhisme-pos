@@ -103,7 +103,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
     );
   }
 
-  Future<void> _pickSupplier() async { final picked = await showModalBottomSheet<Supplier?>(context: context, builder: (ctx) => _SupplierPicker(suppliers: _suppliers)); if (picked != null || mounted) setState(() => _selectedSupplier = picked == _selectedSupplier ? null : picked); }
+  Future<void> _pickSupplier() async { final picked = await showModalBottomSheet<Supplier?>(context: context, builder: (ctx) => _SupplierPicker(suppliers: _suppliers)); if (mounted) setState(() => _selectedSupplier = picked == _selectedSupplier ? null : picked); }
   String _formatDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }
 
