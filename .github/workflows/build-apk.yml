@@ -1,4 +1,4 @@
-name: Build Dukaan Dhisme POS Android APK
+name: Build Dukaan Dhisme POS Validation APK
 
 on:
   workflow_dispatch:
@@ -7,9 +7,13 @@ on:
       - main
       - master
 
+permissions:
+  contents: read
+
 jobs:
-  build-apk:
+  build-validation-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       GRADLE_OPTS: -Dorg.gradle.vfs.watch=false
 
@@ -26,23 +30,26 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: "3.44.1"
           cache: true
 
       - name: Install Android SDK 36
         run: |
+          set -euo pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "platforms;android-36" \
-            "build-tools;36.0.0" || true
+            "build-tools;36.0.0"
 
       - name: Create Android project files if missing
         run: |
+          set -euo pipefail
           if [ ! -d "android" ]; then
             flutter create . --project-name dhisme_pos --org com.dukaandhisme --platforms=android
           fi
 
       - name: Configure Android manifest
         run: |
+          set -euo pipefail
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if ! grep -q "android.permission.INTERNET" "$MANIFEST"; then
             sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
@@ -51,17 +58,10 @@ jobs:
             sed -i '/<manifest/a\    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' "$MANIFEST"
           fi
           sed -i 's/android:label="[^"]*"/android:label="Dukaan Dhisme POS"/g' "$MANIFEST"
-          cat "$MANIFEST"
 
-      - name: Show Flutter doctor
-        run: flutter doctor -v
-
-      - name: Get packages
-        run: flutter pub get
-
-      - name: Force compileSdk 36 for all Android Gradle subprojects
+      - name: Configure compileSdk 36
         run: |
-          set -e
+          set -euo pipefail
           mkdir -p "$HOME/.gradle/init.d"
           cat > "$HOME/.gradle/init.d/force-android-compile-sdk.gradle" <<'EOF'
           gradle.projectsEvaluated {
@@ -70,69 +70,39 @@ jobs:
                   if (androidExt != null) {
                       try { androidExt.compileSdk = 36 } catch (Throwable ignored) {}
                       try { androidExt.compileSdkVersion 36 } catch (Throwable ignored) {}
-                      println("Forced compileSdk 36 for ${project.path}")
                   }
               }
           }
           EOF
           echo "android.suppressUnsupportedCompileSdk=36" >> android/gradle.properties
-          if [ -f android/app/build.gradle ]; then
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/g' android/app/build.gradle
-            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' android/app/build.gradle
-            sed -i 's/compileSdk [0-9][0-9]*/compileSdk 36/g' android/app/build.gradle
-            sed -i 's/compileSdkVersion [0-9][0-9]*/compileSdkVersion 36/g' android/app/build.gradle
-          fi
-          if [ -f android/app/build.gradle.kts ]; then
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/g' android/app/build.gradle.kts
-            sed -i 's/compileSdk = [0-9][0-9]*/compileSdk = 36/g' android/app/build.gradle.kts
-          fi
 
-      - name: Generate splash screen
-        run: dart run flutter_native_splash:create
+      - name: Get packages
+        run: flutter pub get
 
-      - name: Generate app icon
-        run: dart run flutter_launcher_icons
+      - name: Generate splash and app icon
+        run: |
+          dart run flutter_native_splash:create
+          dart run flutter_launcher_icons
 
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
 
-      - name: Build release APK
+      - name: Run automated tests
+        run: flutter test --coverage
+
+      - name: Build unsigned validation APK
         run: |
           flutter build apk --release \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          echo "UNSIGNED VALIDATION BUILD - NOT FOR PRODUCTION DISTRIBUTION" \
+            > build/app/outputs/flutter-apk/BUILD_CHANNEL.txt
 
-      - name: Sign release APK when signing secrets exist
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          set -e
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
-            echo "Signing secrets are not fully configured. Skipping APK signing."
-            exit 0
-          fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release-keystore.jks
-          UNSIGNED_APK="build/app/outputs/flutter-apk/app-release.apk"
-          ALIGNED_APK="build/app/outputs/flutter-apk/app-release-aligned.apk"
-          SIGNED_APK="build/app/outputs/flutter-apk/app-release-signed.apk"
-          ZIPALIGN="$ANDROID_HOME/build-tools/36.0.0/zipalign"
-          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
-          "$ZIPALIGN" -f -p 4 "$UNSIGNED_APK" "$ALIGNED_APK"
-          "$APKSIGNER" sign \
-            --ks release-keystore.jks \
-            --ks-key-alias "$ANDROID_KEY_ALIAS" \
-            --ks-pass pass:"$ANDROID_KEYSTORE_PASSWORD" \
-            --key-pass pass:"$ANDROID_KEY_PASSWORD" \
-            --out "$SIGNED_APK" \
-            "$ALIGNED_APK"
-          "$APKSIGNER" verify --verbose "$SIGNED_APK"
-          cp "$SIGNED_APK" "$UNSIGNED_APK"
-
-      - name: Upload APK artifact
+      - name: Upload validation artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dukaan-dhisme-pos-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: dukaan-dhisme-pos-unsigned-validation-apk
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/BUILD_CHANNEL.txt
+          retention-days: 7
