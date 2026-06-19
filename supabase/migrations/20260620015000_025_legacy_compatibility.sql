@@ -157,10 +157,10 @@ $$;
 
 create or replace function public.record_purchase(
   p_items jsonb,
-  p_supplier_id uuid,
-  p_invoice_ref text,
-  p_purchase_date date,
-  p_payment_status text,
+  p_supplier_id uuid default null,
+  p_invoice_ref text default null,
+  p_purchase_date date default current_date,
+  p_payment_status text default 'paid',
   p_notes text default null
 ) returns uuid
 language plpgsql
@@ -187,7 +187,7 @@ $$;
 create or replace function public.record_supplier_payment(
   p_supplier_id uuid,
   p_amount numeric,
-  p_payment_method text,
+  p_payment_method text default 'cash',
   p_reference_no text default null,
   p_notes text default null
 ) returns uuid
@@ -204,8 +204,8 @@ $$;
 create or replace function public.record_expense(
   p_category text,
   p_amount numeric,
-  p_payment_method text,
-  p_expense_date date,
+  p_payment_method text default 'cash',
+  p_expense_date date default current_date,
   p_reference_no text default null,
   p_notes text default null
 ) returns uuid
@@ -222,8 +222,8 @@ $$;
 create or replace function public.record_return(
   p_sale_id uuid,
   p_items jsonb,
-  p_refund_method text,
-  p_reason text
+  p_refund_method text default 'cash',
+  p_reason text default null
 ) returns uuid
 language sql
 security definer
