@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/i18n/app_language.dart';
+import '../../../core/utils/errors.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/models/app_profile.dart';
@@ -101,7 +102,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                         child: Column(mainAxisSize: MainAxisSize.min, children: [
                           const Icon(Icons.error_outline, size: 48, color: Colors.red),
                           const SizedBox(height: 12),
-                          Text(snapshot.error.toString(), textAlign: TextAlign.center),
+                          Text(friendlyError(snapshot.error!, fallback: 'Could not load customers.'), textAlign: TextAlign.center),
                           const SizedBox(height: 12),
                           FilledButton.icon(onPressed: _reload, icon: const Icon(Icons.refresh), label: Text(context.tr('Mar kale isku day', 'Try Again'))),
                         ]),
