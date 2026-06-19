@@ -1,4 +1,5 @@
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/idempotency.dart';
 import '../models/supplier.dart';
 
 class SupplierRepository {
@@ -29,8 +30,7 @@ class SupplierRepository {
       'name': name.trim(),
       if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
       if (address != null && address.trim().isNotEmpty) 'address': address.trim(),
-      if (contactPerson != null && contactPerson.trim().isNotEmpty)
-        'contact_person': contactPerson.trim(),
+      if (contactPerson != null && contactPerson.trim().isNotEmpty) 'contact_person': contactPerson.trim(),
       if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
     });
   }
@@ -68,7 +68,7 @@ class SupplierRepository {
   Future<List<Map<String, dynamic>>> listPayments(String supplierId) async {
     final data = await sb
         .from('supplier_payments')
-        .select('*, profiles!paid_by(full_name)')
+        .select('*, profiles!paid_by(full_name), supplier_payment_allocations(purchase_id, amount)')
         .eq('supplier_id', supplierId)
         .order('created_at', ascending: false)
         .limit(100) as List<dynamic>;
@@ -81,13 +81,15 @@ class SupplierRepository {
     required String paymentMethod,
     String? referenceNo,
     String? notes,
+    String? idempotencyKey,
   }) async {
-    final id = await sb.rpc('record_supplier_payment', params: {
+    final id = await sb.rpc('record_supplier_payment_v2', params: {
       'p_supplier_id': supplierId,
       'p_amount': amount,
       'p_payment_method': paymentMethod,
       'p_reference_no': referenceNo,
       'p_notes': notes,
+      'p_idempotency_key': idempotencyKey ?? newOperationKey('supplier-payment'),
     });
     return id as String;
   }
