@@ -44,9 +44,18 @@ jobs:
       - name: Install Android SDK 36
         run: |
           set -euo pipefail
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+          # sdkmanager closes stdin after accepting licenses. Disable pipefail only
+          # for this pipeline so the normal SIGPIPE from `yes` is not a failure;
+          # the pipeline still returns sdkmanager's own exit status.
+          set +o pipefail
+          yes | "$SDKMANAGER" \
             "platforms;android-36" \
             "build-tools;36.0.0"
+          set -o pipefail
 
       - name: Create Android project files if missing
         run: |
