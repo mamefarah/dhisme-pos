@@ -216,60 +216,60 @@ on conflict do nothing;
 -- Reconstruct historical customer allocations FIFO. Existing data is small and this is repeatable.
 do $$
 declare
-  p record;
-  s record;
+  v_payment record;
+  v_invoice record;
   v_remaining numeric(14,2);
   v_allocate numeric(14,2);
 begin
-  for p in
+  for v_payment in
     select cp.*,
            cp.amount - coalesce((select sum(a.amount) from public.customer_payment_allocations a where a.payment_id = cp.id),0) as unallocated
     from public.customer_payments cp
     order by cp.customer_id, cp.created_at, cp.id
   loop
-    v_remaining := p.unallocated;
+    v_remaining := v_payment.unallocated;
     if v_remaining <= 0 then continue; end if;
 
-    for s in
-      select id, balance_amount
-      from public.sales
-      where store_id = p.store_id
-        and customer_id = p.customer_id
-        and sale_type = 'credit'
-        and status = 'completed'
-        and balance_amount > 0
-        and created_at <= p.created_at
-      order by created_at, id
+    for v_invoice in
+      select sale_row.id, sale_row.balance_amount
+      from public.sales sale_row
+      where sale_row.store_id = v_payment.store_id
+        and sale_row.customer_id = v_payment.customer_id
+        and sale_row.sale_type = 'credit'
+        and sale_row.status = 'completed'
+        and sale_row.balance_amount > 0
+        and sale_row.created_at <= v_payment.created_at
+      order by sale_row.created_at, sale_row.id
       for update
     loop
       exit when v_remaining <= 0;
-      v_allocate := least(v_remaining, s.balance_amount);
+      v_allocate := least(v_remaining, v_invoice.balance_amount);
 
       insert into public.customer_payment_allocations(store_id, payment_id, sale_id, amount)
-      values (p.store_id, p.id, s.id, v_allocate)
+      values (v_payment.store_id, v_payment.id, v_invoice.id, v_allocate)
       on conflict (payment_id, sale_id) do update
       set amount = excluded.amount;
 
-      update public.sales
-      set paid_amount = least(total_amount - refunded_amount, paid_amount + v_allocate),
-          balance_amount = greatest(0, balance_amount - v_allocate),
+      update public.sales sale_row
+      set paid_amount = least(sale_row.total_amount - sale_row.refunded_amount, sale_row.paid_amount + v_allocate),
+          balance_amount = greatest(0, sale_row.balance_amount - v_allocate),
           payment_status = case
-            when greatest(0, balance_amount - v_allocate) = 0 then 'paid'
+            when greatest(0, sale_row.balance_amount - v_allocate) = 0 then 'paid'
             else 'partial'
           end
-      where id = s.id;
+      where sale_row.id = v_invoice.id;
 
       v_remaining := v_remaining - v_allocate;
     end loop;
   end loop;
 
-  update public.customers c
+  update public.customers customer_row
   set total_balance = coalesce((
-    select sum(s.balance_amount)
-    from public.sales s
-    where s.customer_id = c.id
-      and s.store_id = c.store_id
-      and s.sale_type = 'credit'
-      and s.status = 'completed'
+    select sum(sale_row.balance_amount)
+    from public.sales sale_row
+    where sale_row.customer_id = customer_row.id
+      and sale_row.store_id = customer_row.store_id
+      and sale_row.sale_type = 'credit'
+      and sale_row.status = 'completed'
   ),0);
 end $$;
