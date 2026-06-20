@@ -57,6 +57,35 @@ class SalesRepository {
     return returnId as String;
   }
 
+  /// Returns the amount already refunded for each sale-item line.
+  ///
+  /// Return items are created only inside the completed-return transaction, so
+  /// summing them is the exact source of truth used by `record_return_v2`.
+  Future<Map<String, double>> returnedRefundTotals(
+    List<String> saleItemIds,
+  ) async {
+    if (saleItemIds.isEmpty) return const {};
+
+    final rows = List<Map<String, dynamic>>.from(
+      await sb
+          .from('return_items')
+          .select('sale_item_id, total_price')
+          .inFilter('sale_item_id', saleItemIds) as List,
+    );
+
+    final totals = <String, double>{};
+    for (final row in rows) {
+      final saleItemId = row['sale_item_id'] as String?;
+      if (saleItemId == null) continue;
+      totals.update(
+        saleItemId,
+        (value) => value + ((row['total_price'] as num?)?.toDouble() ?? 0),
+        ifAbsent: () => ((row['total_price'] as num?)?.toDouble() ?? 0),
+      );
+    }
+    return totals;
+  }
+
   Future<List<Map<String, dynamic>>> salesHistory({
     int limit = 200,
     DateTime? from,
