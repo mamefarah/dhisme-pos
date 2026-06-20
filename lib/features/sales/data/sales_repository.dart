@@ -1,21 +1,22 @@
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/idempotency.dart';
 
 class SalesRepository {
   Future<String> createCashSale({
     required List<Map<String, dynamic>> items,
+    required List<Map<String, dynamic>> payments,
     String? customerId,
-    required String paymentMethod,
-    String? referenceNo,
     double discount = 0,
     String? notes,
+    String? idempotencyKey,
   }) async {
-    final saleId = await sb.rpc('create_cash_sale', params: {
+    final saleId = await sb.rpc('create_cash_sale_v2', params: {
       'p_customer_id': customerId,
       'p_items': items,
-      'p_payment_method': paymentMethod,
-      'p_reference_no': referenceNo,
+      'p_payments': payments,
       'p_discount': discount,
       'p_notes': notes,
+      'p_idempotency_key': idempotencyKey ?? newOperationKey('sale'),
     });
     return saleId as String;
   }
@@ -26,13 +27,15 @@ class SalesRepository {
     required String reason,
     double discount = 0,
     String? notes,
+    String? idempotencyKey,
   }) async {
-    final requestId = await sb.rpc('request_credit_sale', params: {
+    final requestId = await sb.rpc('request_credit_sale_v2', params: {
       'p_customer_id': customerId,
       'p_items': items,
       'p_reason': reason,
       'p_discount': discount,
       'p_notes': notes,
+      'p_idempotency_key': idempotencyKey ?? newOperationKey('credit-request'),
     });
     return requestId as String;
   }
@@ -42,12 +45,14 @@ class SalesRepository {
     required List<Map<String, dynamic>> items,
     required String refundMethod,
     required String reason,
+    String? idempotencyKey,
   }) async {
-    final returnId = await sb.rpc('record_return', params: {
+    final returnId = await sb.rpc('record_return_v2', params: {
       'p_sale_id': saleId,
       'p_items': items,
       'p_refund_method': refundMethod,
       'p_reason': reason,
+      'p_idempotency_key': idempotencyKey ?? newOperationKey('return'),
     });
     return returnId as String;
   }
@@ -60,7 +65,7 @@ class SalesRepository {
     var query = sb
         .from('sales')
         .select(
-          'id, invoice_no, total_amount, subtotal, discount, '
+          'id, invoice_no, total_amount, refunded_amount, subtotal, discount, '
           'sale_type, payment_method, payment_status, status, created_at, '
           'profiles!seller_id(full_name), customers!customer_id(name)',
         );
@@ -79,7 +84,7 @@ class SalesRepository {
           .from('sales')
           .select(
             '*, profiles!seller_id(full_name), customers!customer_id(name), '
-            'sale_items(id, product_id, product_name, unit, quantity, unit_price, total_price)',
+            'sale_items(id, product_id, product_name, unit, quantity, returned_quantity, unit_price, total_price)',
           )
           .eq('id', saleId)
           .maybeSingle();

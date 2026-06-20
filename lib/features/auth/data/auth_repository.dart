@@ -11,15 +11,12 @@ class AuthRepository {
   Future<void> signOut() => sb.auth.signOut();
 
   Future<AppProfile?> currentProfile() async {
-    final user = sb.auth.currentUser;
-    if (user == null) return null;
-    final data = await sb.from('profiles').select().eq('id', user.id).maybeSingle();
-    if (data == null) return null;
-    return AppProfile.fromMap(data);
+    if (sb.auth.currentUser == null) return null;
+    final result = await sb.rpc('get_my_profile_v2');
+    if (result == null) return null;
+    return AppProfile.fromMap(Map<String, dynamic>.from(result as Map));
   }
 
-  /// Creates a Supabase auth user. Stores owner registration data in user
-  /// metadata so it survives an email-confirmation round-trip.
   Future<AuthResponse> signUp({
     required String email,
     required String password,
@@ -42,8 +39,6 @@ class AuthRepository {
         },
       );
 
-  /// Creates the store and owner profile rows via a SECURITY DEFINER RPC.
-  /// Safe to call only when the user is authenticated.
   Future<void> registerOwner({
     required String fullName,
     required String storeName,
@@ -59,9 +54,6 @@ class AuthRepository {
         'p_store_address': storeAddress,
       });
 
-  /// Creates a Supabase auth user for an employee joining via invite code.
-  /// Stores the invite code and name in metadata so registration can complete
-  /// after an email-confirmation round-trip.
   Future<AuthResponse> signUpEmployee({
     required String email,
     required String password,
@@ -80,7 +72,6 @@ class AuthRepository {
         },
       );
 
-  /// Creates the employee profile row by validating the stored invite code.
   Future<void> registerWithInvite({
     required String fullName,
     required String inviteCode,

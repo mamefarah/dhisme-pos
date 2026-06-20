@@ -1,4 +1,5 @@
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/idempotency.dart';
 import '../models/purchase.dart';
 
 class PurchaseRepository {
@@ -20,6 +21,7 @@ class PurchaseRepository {
     return data.map((e) => PurchaseItem.fromMap(e as Map<String, dynamic>)).toList();
   }
 
+  /// Compatibility path for the legacy screen. New UI should call [recordPurchaseV2].
   Future<String> recordPurchase({
     required List<Map<String, dynamic>> items,
     String? supplierId,
@@ -35,6 +37,29 @@ class PurchaseRepository {
       'p_purchase_date': purchaseDate.toIso8601String().substring(0, 10),
       'p_payment_status': paymentStatus,
       'p_notes': notes,
+    });
+    return result as String;
+  }
+
+  Future<String> recordPurchaseV2({
+    required List<Map<String, dynamic>> items,
+    String? supplierId,
+    String? invoiceRef,
+    required DateTime purchaseDate,
+    required double paidAmount,
+    required String paymentMethod,
+    String? notes,
+    String? idempotencyKey,
+  }) async {
+    final result = await sb.rpc('record_purchase_v2', params: {
+      'p_items': items,
+      'p_supplier_id': supplierId,
+      'p_invoice_ref': invoiceRef,
+      'p_purchase_date': purchaseDate.toIso8601String().substring(0, 10),
+      'p_paid_amount': paidAmount,
+      'p_payment_method': paymentMethod,
+      'p_notes': notes,
+      'p_idempotency_key': idempotencyKey ?? newOperationKey('purchase'),
     });
     return result as String;
   }
