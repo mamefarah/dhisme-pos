@@ -51,7 +51,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             bottom: TabBar(tabs: [Tab(text: context.tr('Iib Deyn ah', 'Credit Sales')), Tab(text: context.tr('Lacag Bixinno', 'Payments'))]),
           ),
           body: Column(children: [
-            _CustomerHeader(customer: _customer, cs: cs, onStatement: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomerStatementScreen(customer: _customer))), onRecordPayment: () async { final recorded = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => RecordPaymentScreen(customer: _customer))); if (recorded == true && mounted) Navigator.of(context).pop(true); }),
+            _CustomerHeader(
+              customer: _customer,
+              cs: cs,
+              onStatement: canEdit
+                  ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomerStatementScreen(customer: _customer)))
+                  : null,
+              onRecordPayment: () async { final recorded = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => RecordPaymentScreen(customer: _customer))); if (recorded == true && mounted) Navigator.of(context).pop(true); },
+            ),
             const Divider(height: 1),
             Expanded(child: FutureBuilder<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)>(
               future: _future,
@@ -70,11 +77,11 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 }
 
 class _CustomerHeader extends StatelessWidget {
-  const _CustomerHeader({required this.customer, required this.cs, required this.onRecordPayment, required this.onStatement});
+  const _CustomerHeader({required this.customer, required this.cs, required this.onRecordPayment, this.onStatement});
   final Customer customer;
   final ColorScheme cs;
   final VoidCallback onRecordPayment;
-  final VoidCallback onStatement;
+  final VoidCallback? onStatement;
 
   @override
   Widget build(BuildContext context) {
@@ -91,8 +98,10 @@ class _CustomerHeader extends StatelessWidget {
       ]),
       const SizedBox(height: 12),
       Card(color: customer.hasDebt ? cs.errorContainer : Colors.green.shade50, margin: EdgeInsets.zero, child: ListTile(leading: Icon(Icons.account_balance_wallet_outlined, color: customer.hasDebt ? cs.error : Colors.green.shade700), title: Text(customer.hasDebt ? context.tr('Deyn taagan', 'Outstanding balance') : context.tr('Deyn taagan ma jirto', 'No outstanding debt'), style: const TextStyle(fontSize: 14)), trailing: Text(money(customer.totalBalance), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: customer.hasDebt ? cs.error : Colors.green.shade700)))),
-      const SizedBox(height: 10),
-      OutlinedButton.icon(onPressed: onStatement, icon: const Icon(Icons.picture_as_pdf_outlined), label: Text(context.tr('Statement PDF', 'Statement PDF'))),
+      if (onStatement != null) ...[
+        const SizedBox(height: 10),
+        OutlinedButton.icon(onPressed: onStatement, icon: const Icon(Icons.picture_as_pdf_outlined), label: Text(context.tr('Statement PDF', 'Statement PDF'))),
+      ],
       if (customer.hasDebt) ...[const SizedBox(height: 10), FilledButton.icon(onPressed: onRecordPayment, icon: const Icon(Icons.payments_outlined), label: Text(context.tr('Diiwaangeli Lacag Bixin', 'Record Payment')))],
       if (customer.creditBlocked) ...[const SizedBox(height: 8), Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.red.shade200)), child: Row(children: [Icon(Icons.block, size: 16, color: Colors.red.shade700), const SizedBox(width: 8), Expanded(child: Text(context.tr('Iibka deynta ah waa laga xannibay macmiilkan.', 'Credit sales blocked for this customer.'), style: const TextStyle(fontSize: 12, color: Colors.red)))]))]
       else if (customer.hasLimit) ...[const SizedBox(height: 8), Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.blue.shade100)), child: Row(children: [Icon(Icons.credit_score_outlined, size: 16, color: Colors.blue.shade700), const SizedBox(width: 8), Expanded(child: Text('${context.tr('Xadka deynta', 'Credit limit')}: ${money(customer.creditLimit)}  •  ${context.tr('La heli karo', 'Available')}: ${money(customer.remainingCredit)}', style: TextStyle(fontSize: 12, color: Colors.blue.shade800)))]))],
