@@ -34,7 +34,17 @@ class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
         child: Scaffold(
           appBar: AppBar(
             title: Text(s.name),
-            actions: [IconButton(icon: const Icon(Icons.edit_outlined), tooltip: context.tr('Wax ka beddel', 'Edit'), onPressed: () async { await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SupplierFormScreen(supplier: s))); if (mounted) Navigator.of(context).pop(true); })],
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: context.tr('Wax ka beddel', 'Edit'),
+                onPressed: () async {
+                  final navigator = Navigator.of(context);
+                  await navigator.push(MaterialPageRoute(builder: (_) => SupplierFormScreen(supplier: s)));
+                  if (mounted) navigator.pop(true);
+                },
+              ),
+            ],
             bottom: TabBar(tabs: [Tab(text: context.tr('Iibsiyo', 'Purchases')), Tab(text: context.tr('Bixinno', 'Payments'))]),
           ),
           body: Column(children: [
@@ -42,7 +52,18 @@ class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
               Row(children: [CircleAvatar(backgroundColor: Colors.teal.withValues(alpha: 0.12), child: const Icon(Icons.local_shipping_outlined, color: Colors.teal)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(s.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), if (s.phone != null) Text(s.phone!, style: const TextStyle(fontSize: 13, color: Colors.black54)), if (s.contactPerson != null) Text('${context.tr('Xiriir', 'Contact')}: ${s.contactPerson}', style: const TextStyle(fontSize: 13, color: Colors.black54))]))]),
               const SizedBox(height: 12),
               Card(color: s.hasDebt ? Colors.orange.shade50 : Colors.green.shade50, margin: EdgeInsets.zero, child: ListTile(leading: Icon(Icons.account_balance_wallet_outlined, color: s.hasDebt ? Colors.orange.shade800 : Colors.green.shade700), title: Text(s.hasDebt ? context.tr('Deyn taagan', 'Outstanding balance') : context.tr('Deyn ma jirto', 'No supplier debt')), trailing: Text(money(s.totalBalance), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: s.hasDebt ? Colors.orange.shade800 : Colors.green.shade700)))),
-              if (s.hasDebt) ...[const SizedBox(height: 10), FilledButton.icon(onPressed: () async { final paid = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => SupplierPaymentScreen(supplier: s))); if (paid == true && mounted) Navigator.of(context).pop(true); }, icon: const Icon(Icons.payments_outlined), label: Text(context.tr('Diiwaangeli Bixin', 'Record Payment')))],
+              if (s.hasDebt) ...[
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    final paid = await navigator.push<bool>(MaterialPageRoute(builder: (_) => SupplierPaymentScreen(supplier: s)));
+                    if (paid == true && mounted) navigator.pop(true);
+                  },
+                  icon: const Icon(Icons.payments_outlined),
+                  label: Text(context.tr('Diiwaangeli Bixin', 'Record Payment')),
+                ),
+              ],
             ])),
             const Divider(height: 1),
             Expanded(child: FutureBuilder<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)>(

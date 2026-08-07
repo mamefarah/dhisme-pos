@@ -46,12 +46,29 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             title: Text(_customer.name),
             actions: [
               if (canEdit)
-                IconButton(icon: const Icon(Icons.edit_outlined), tooltip: context.tr('Wax ka beddel macmiilka', 'Edit customer'), onPressed: () async { final updated = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => CustomerFormScreen(profile: widget.profile, customer: _customer))); if (updated == true && mounted) Navigator.of(context).pop(true); }),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: context.tr('Wax ka beddel macmiilka', 'Edit customer'),
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    final updated = await navigator.push<bool>(MaterialPageRoute(builder: (_) => CustomerFormScreen(profile: widget.profile, customer: _customer)));
+                    if (updated == true && mounted) navigator.pop(true);
+                  },
+                ),
             ],
             bottom: TabBar(tabs: [Tab(text: context.tr('Iib Deyn ah', 'Credit Sales')), Tab(text: context.tr('Lacag Bixinno', 'Payments'))]),
           ),
           body: Column(children: [
-            _CustomerHeader(customer: _customer, cs: cs, onStatement: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomerStatementScreen(customer: _customer))), onRecordPayment: () async { final recorded = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => RecordPaymentScreen(customer: _customer))); if (recorded == true && mounted) Navigator.of(context).pop(true); }),
+            _CustomerHeader(
+              customer: _customer,
+              cs: cs,
+              onStatement: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomerStatementScreen(customer: _customer))),
+              onRecordPayment: () async {
+                final navigator = Navigator.of(context);
+                final recorded = await navigator.push<bool>(MaterialPageRoute(builder: (_) => RecordPaymentScreen(customer: _customer)));
+                if (recorded == true && mounted) navigator.pop(true);
+              },
+            ),
             const Divider(height: 1),
             Expanded(child: FutureBuilder<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)>(
               future: _future,
