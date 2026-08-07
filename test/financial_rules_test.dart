@@ -143,6 +143,48 @@ void main() {
         isFalse,
       );
     });
+
+    test('final return receives remaining cents exactly', () {
+      final first = FinancialRules.lineRefundAmount(
+        lineTotal: 10,
+        soldQuantity: 3,
+        alreadyReturnedQuantity: 0,
+        alreadyRefundedAmount: 0,
+        requestedQuantity: 1,
+      );
+      final second = FinancialRules.lineRefundAmount(
+        lineTotal: 10,
+        soldQuantity: 3,
+        alreadyReturnedQuantity: 1,
+        alreadyRefundedAmount: first,
+        requestedQuantity: 1,
+      );
+      final finalReturn = FinancialRules.lineRefundAmount(
+        lineTotal: 10,
+        soldQuantity: 3,
+        alreadyReturnedQuantity: 2,
+        alreadyRefundedAmount: first + second,
+        requestedQuantity: 1,
+      );
+
+      expect(first, 3.33);
+      expect(second, 3.33);
+      expect(finalReturn, 3.34);
+      expect(first + second + finalReturn, 10);
+    });
+
+    test('full remaining quantity refunds exact remaining line amount', () {
+      expect(
+        FinancialRules.lineRefundAmount(
+          lineTotal: 10,
+          soldQuantity: 3,
+          alreadyReturnedQuantity: 1,
+          alreadyRefundedAmount: 3.33,
+          requestedQuantity: 2,
+        ),
+        6.67,
+      );
+    });
   });
 
   test('expected cash includes all inflows and outflows', () {

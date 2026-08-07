@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/finance/financial_rules.dart';
 import '../../../core/i18n/app_language.dart';
 import '../../../core/utils/errors.dart';
 import '../../../core/utils/idempotency.dart';
@@ -17,8 +18,11 @@ class _ReturnSaleScreenState extends State<ReturnSaleScreen> {
   final _repo = SalesRepository();
   final _reason = TextEditingController();
   final Map<String, TextEditingController> _qty = {};
+  Map<String, double> _alreadyRefunded = const {};
   String _refundMethod = 'cash';
   String? _operationKey;
+  String? _refundTotalsError;
+  bool _refundTotalsLoading = true;
   bool _loading = false;
 
   List<Map<String, dynamic>> get _items {
@@ -38,6 +42,38 @@ class _ReturnSaleScreenState extends State<ReturnSaleScreen> {
     for (final item in _items) {
       _qty[item['id'] as String] = TextEditingController();
     }
+    _loadRefundTotals();
+  }
+
+  Future<void> _loadRefundTotals() async {
+    if (mounted) {
+      setState(() {
+        _refundTotalsLoading = true;
+        _refundTotalsError = null;
+      });
+    }
+    try {
+      final totals = await _repo.returnedRefundTotals(
+        _items.map((item) => item['id'] as String).toList(growable: false),
+      );
+      if (!mounted) return;
+      setState(() {
+        _alreadyRefunded = totals;
+        _refundTotalsLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _refundTotalsLoading = false;
+        _refundTotalsError = friendlyError(
+          e,
+          fallback: context.tr(
+            'Lacagihii hore loo celiyay lama xaqiijin karin.',
+            'Previous refund amounts could not be verified.',
+          ),
+        );
+      });
+    }
   }
 
   @override
@@ -53,7 +89,26 @@ class _ReturnSaleScreenState extends State<ReturnSaleScreen> {
   double _returnedQty(Map<String, dynamic> item) => ((item['returned_quantity'] as num?) ?? 0).toDouble();
   double _remainingQty(Map<String, dynamic> item) => (_soldQty(item) - _returnedQty(item)).clamp(0, double.infinity);
   double _itemPrice(Map<String, dynamic> item) => ((item['unit_price'] as num?) ?? 0).toDouble();
+  double _lineTotal(Map<String, dynamic> item) => ((item['total_price'] as num?) ?? 0).toDouble();
   String _fmt(double v) => v == v.truncateToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+
+  double _lineRefund(Map<String, dynamic> item, double quantity) {
+    if (!FinancialRules.returnQuantityAllowed(
+      sold: _soldQty(item),
+      alreadyReturned: _returnedQty(item),
+      requested: quantity,
+    )) {
+      return 0;
+    }
+
+    return FinancialRules.lineRefundAmount(
+      lineTotal: _lineTotal(item),
+      soldQuantity: _soldQty(item),
+      alreadyReturnedQuantity: _returnedQty(item),
+      alreadyRefundedAmount: _alreadyRefunded[item['id'] as String] ?? 0,
+      requestedQuantity: quantity,
+    );
+  }
 
   List<Map<String, dynamic>> _selectedItems() {
     final rows = <Map<String, dynamic>>[];
@@ -69,12 +124,20 @@ class _ReturnSaleScreenState extends State<ReturnSaleScreen> {
     var total = 0.0;
     for (final item in _items) {
       final q = double.tryParse(_qty[item['id']]?.text.trim() ?? '') ?? 0;
-      if (q > 0) total += q * _itemPrice(item);
+      if (q > 0) total += _lineRefund(item, q);
     }
     return total;
   }
 
   Future<void> _submit() async {
+    if (_refundTotalsLoading || _refundTotalsError != null) {
+      _showError(context.tr(
+        'Sug inta xogta celinta la xaqiijinayo.',
+        'Wait until the refund data is verified.',
+      ));
+      return;
+    }
+
     final rows = _selectedItems();
     if (rows.isEmpty) {
       _showError(context.tr('Dooro ugu yaraan hal alaab oo la celinayo.', 'Select at least one item to return.'));
@@ -160,11 +223,32 @@ class _ReturnSaleScreenState extends State<ReturnSaleScreen> {
                 children: [
                   Text(context.tr('Dooro alaabta la celinayo iyo tirada weli la celin karo.', 'Select items and quantities still eligible for return.'), style: const TextStyle(color: Colors.black54)),
                   const SizedBox(height: 12),
+                  if (_refundTotalsLoading)
+                    const LinearProgressIndicator()
+                  else if (_refundTotalsError != null)
+                    Card(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      child: ListTile(
+                        leading: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+                        title: Text(_refundTotalsError!),
+                        trailing: IconButton(
+                          onPressed: _loadRefundTotals,
+                          icon: const Icon(Icons.refresh),
+                          tooltip: context.tr('Mar kale isku day', 'Try again'),
+                        ),
+                      ),
+                    ),
+                  if (_refundTotalsLoading || _refundTotalsError != null)
+                    const SizedBox(height: 12),
                   ...availableItems.map((item) {
                     final id = item['id'] as String;
                     final sold = _soldQty(item);
                     final returned = _returnedQty(item);
                     final remaining = _remainingQty(item);
+                    final requested = double.tryParse(_qty[id]?.text.trim() ?? '') ?? 0;
+                    final lineRefund = _refundTotalsLoading || _refundTotalsError != null
+                        ? 0.0
+                        : _lineRefund(item, requested);
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: Padding(
@@ -175,6 +259,8 @@ class _ReturnSaleScreenState extends State<ReturnSaleScreen> {
                               Text(item['product_name'] as String? ?? context.tr('Alaab', 'Item'), style: const TextStyle(fontWeight: FontWeight.w600)),
                               Text('${context.tr('La iibiyay', 'Sold')}: ${_fmt(sold)} • ${context.tr('Hore loo celiyay', 'Previously returned')}: ${_fmt(returned)}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
                               Text('${context.tr('La celin karo', 'Returnable')}: ${_fmt(remaining)} ${item['unit'] ?? ''} × ${money(_itemPrice(item))}', style: TextStyle(fontSize: 12, color: Colors.green.shade700, fontWeight: FontWeight.w600)),
+                              if (requested > 0 && lineRefund > 0)
+                                Text('${context.tr('Lacagta saxda ah', 'Exact refund')}: ${money(lineRefund)}', style: TextStyle(fontSize: 12, color: Colors.orange.shade800, fontWeight: FontWeight.w600)),
                             ]),
                           ),
                           const SizedBox(width: 12),
@@ -218,12 +304,14 @@ class _ReturnSaleScreenState extends State<ReturnSaleScreen> {
                     color: Colors.orange.shade50,
                     child: ListTile(
                       title: Text(context.tr('Wadarta celinta', 'Refund total')),
-                      trailing: Text(money(_refundTotal), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.orange.shade800)),
+                      trailing: _refundTotalsLoading
+                          ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(money(_refundTotal), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.orange.shade800)),
                     ),
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: _loading ? null : _submit,
+                    onPressed: _loading || _refundTotalsLoading || _refundTotalsError != null ? null : _submit,
                     icon: _loading ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.undo_outlined),
                     label: Text(context.tr('Diiwaangeli Celin', 'Record Return')),
                   ),
