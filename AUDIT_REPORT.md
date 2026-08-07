@@ -8,36 +8,24 @@ This document contains the comprehensive security, architectural, and transactio
 
 An exhaustive review and audit of the entire codebase was conducted across both the **Supabase Backend (SQL Migrations, Policies, and stored procedures)** and the **Flutter Client (Dart application, Repositories, Screens, and Themes)**.
 
-### Overall Assessment: **Highly Secure & Robust (Production-Ready)**
-Following previous Red Team remediation efforts, the codebase demonstrates **exemplary standards** for multi-tenant, role-based database applications. Financial mutations are securely encapsulated inside database RPCs, and the Flutter client utilizes strict, clean repository patterns.
+### Overall Assessment: **Controlled-Pilot Ready**
+Following previous Red Team remediation efforts and recent code quality hardening, the codebase demonstrates **exemplary standards** for multi-tenant, role-based database applications. Financial mutations are securely encapsulated inside database RPCs, and the Flutter client utilizes strict, clean repository patterns.
 
-Key highlights include:
-- **Zero hardcoded secrets** in the repository.
-- **Full row-level security (RLS)** isolation scoped by store IDs.
-- **Immutable financial ledger pattern** with restricted client write access.
-- **Idempotency controls** protecting key financial state transitions.
-- **Atomic inventory decrementing and locking** (`FOR UPDATE`) preventing race conditions.
+> **CRITICAL RELEASE GATE NOTICE:**
+> This application is assessed as **Controlled-Pilot Ready** (rather than unconditional production-ready) until all production release gates (tested backup/restore, leaked-password protection, signed production APK releases, crash monitoring, and operational alerting) are fully established and validated.
 
 ---
 
 ## 2. Backend & Database Security Audit
 
 ### 2.1 Row-Level Security (RLS) & Multi-Tenant Isolation
-All tables in the schema have Row-Level Security (RLS) explicitly enabled:
-```sql
-alter table public.stores enable row level security;
-alter table public.profiles enable row level security;
-...
-```
+All tables in the schema have Row-Level Security (RLS) explicitly enabled.
 - **Store Isolation:** Read and write policies dynamically filter data using the helper `public.current_user_store_id()`. There is no path for a user in Store A to read, modify, or inject data into Store B.
 - **Helper Functions:** Functions like `current_user_store_id()` and `current_user_role()` are defined with `SECURITY DEFINER` and have their `search_path` set to `public`. This prevents search-path hijacking attacks.
 
-### 2.2 Immutable Money Ledger
-Direct `INSERT`, `UPDATE`, or `DELETE` permissions on financial tracking tables (`cash_ledger`, `customer_payment_allocations`, `supplier_payment_allocations`, `cash_adjustments`) are explicitly revoked from public, anonymous, and authenticated roles:
-```sql
-revoke insert, update, delete on public.cash_ledger from public, anon, authenticated;
-```
-- **Mutation Control:** All ledger edits are side-effects generated solely by authorized database functions (`SECURITY DEFINER` RPCs), ensuring no rogue client client-side API requests can alter bank or ledger balances.
+### 2.2 Financial Immutability & Ledger Protection
+- **No Direct Table Mutations:** Direct `INSERT`, `UPDATE`, or `DELETE` permissions on financial tracking tables (`cash_ledger`, `customer_payment_allocations`, `supplier_payment_allocations`, `cash_adjustments`) are explicitly revoked from public, anonymous, and authenticated roles.
+- **Transactional Balances Protection (P1 Finding resolved):** BEFORE UPDATE triggers (`trg_protect_customer_balance` and `trg_protect_supplier_balance`) prevent the arbitrary modification of aggregate financial balance fields (`customers.total_balance` and `suppliers.total_balance`) via direct client-side Table/PostgREST updates. These fields are mutated strictly via authorized, server-side `SECURITY DEFINER` transaction RPCs.
 
 ### 2.3 Transaction Integrity & Locking Mechanics
 The database features robust transaction controls to handle concurrent modifications:
@@ -47,11 +35,7 @@ The database features robust transaction controls to handle concurrent modificat
 
 ### 2.4 Least Privilege Functions
 The system maintains tight access controls on execution:
-- By default, PostgREST allows public execution on new functions. This project explicitly revokes all privileges on business RPCs from `anon` and `public`, restricting them solely to `authenticated` users:
-```sql
-revoke all on function public.create_cash_sale_v2(...) from public, anon, authenticated;
-grant execute on function public.create_cash_sale_v2(...) to authenticated;
-```
+- By default, PostgREST allows public execution on new functions. This project explicitly revokes all privileges on business RPCs from `anon` and `public`, restricting them solely to `authenticated` users.
 
 ---
 
@@ -64,7 +48,7 @@ grant execute on function public.create_cash_sale_v2(...) to authenticated;
 ### 3.2 Code Quality & Architecture
 - **Feature-First Architecture:** Code is beautifully grouped by features in `lib/features/` (auth, products, sales, cash closing, etc.), ensuring high modularity and readability.
 - **Repository Pattern:** Flutter screens never interact with the Supabase client directly. All network requests go through high-level repository layers (e.g. `SalesRepository`), which handle deserialization and RPC triggers.
-- **State Management:** Simple, readable, and robust state management utilizing Flutter's native `StatefulWidget` and `setState` matches the non-overengineered requirements.
+- **Modern material widgets:** All deprecated parameter issues, such as `value` inside `DropdownButtonFormField` (updated to `initialValue`) and Radio lists (updated to use standard `RadioGroup` and `groupValue` configuration) have been fully cleaned and modernized under Flutter 3.44.1 compatibility standard.
 
 ### 3.3 Dynamic Somali & English Localization (i18n)
 Localization is elegant, zero-overhead, and uses `AppLanguage` combined with a simple build context extension `context.tr(so, en)`. Text sizes and dynamic overflow states are correctly handled.
@@ -73,44 +57,16 @@ Localization is elegant, zero-overhead, and uses `AppLanguage` combined with a s
 
 ## 4. Risks & Technical Debt Assessment
 
-During static analysis, we identified 26 minor warnings/info points representing mild technical debt rather than functional vulnerabilities.
-
 | Severity | Category | Description | Mitigation / Remediation |
 | :--- | :--- | :--- | :--- |
 | **Critical** | None | No critical vulnerabilities discovered. | N/A |
 | **High** | None | No high-risk security flaws discovered. | N/A |
-| **Medium** | Async Gaps | Async gaps in screens (e.g., `product_detail_screen.dart`, `customer_detail_screen.dart`) where `BuildContext` is used across asynchronous calls without being guarded by `mounted` checks. | Add `if (!mounted) return;` guards. |
-| **Low / Info** | Deprecations | Deprecated parameter usages: `value` instead of `initialValue` in Form Fields; `groupValue` and `onChanged` in some old radio forms; `anonKey` instead of `publishableKey` in `main.dart`. | Upgrade deprecated field names before the next major Flutter SDK bump. |
+| **Medium** | Async Gaps | Resolved. All async gaps in screens (e.g., `product_detail_screen.dart`, `customer_detail_screen.dart`, `supplier_detail_screen.dart`) where `BuildContext` is used across asynchronous calls are now guarded by `mounted` checks. | Verified warning-free. |
+| **Low / Info** | Deprecations | Resolved. All compiler deprecation parameters have been modernized. | Checked warning-free. |
 
 ---
 
-## 5. Actionable Remediation Checklist
+## 5. Audit Verdict
 
-### 1. Guard BuildContext Async Gaps
-Check any screen making async repository calls (e.g. `customer_detail_screen.dart:49`, `product_detail_screen.dart:59`) and ensure they look like:
-```dart
-final scaffold = ScaffoldMessenger.of(context);
-await repository.deleteProduct(id);
-if (!mounted) return;
-scaffold.showSnackBar(...);
-```
-
-### 2. Form Field Code Modernization
-Update `FormBuilder` and Form Fields using deprecated parameters:
-- Change `value: ...` parameter to `initialValue: ...` across forms.
-- Update `anonKey` to `publishableKey` in `main.dart`:
-```dart
-await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
-```
-
-### 3. Database Advisors Review
-Before production rollout:
-- Periodically run the Supabase Database Advisor to verify index coverage.
-- Monitor execution times of the `financial_summary_v2` RPC.
-
----
-
-## 6. Audit Verdict
-
-**Approved with Distinction.**
-The architecture is exceptionally clean, robustly isolated, and enforces strong relational security controls directly at the PostgreSQL layer. It is an excellent implementation of a secure multi-tenant POS system.
+**Approved for Controlled-Pilot Testing.**
+The architecture is exceptionally clean, robustly isolated, and enforces strong relational security controls directly at the PostgreSQL layer. It is an excellent implementation of a secure multi-tenant POS system ready for pilot store deployment.

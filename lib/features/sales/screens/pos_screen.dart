@@ -479,7 +479,7 @@ class _PosScreenState extends State<PosScreen> {
           const SizedBox(height: 8),
         ],
         DropdownButtonFormField<String?>(
-          value: _customerId,
+          initialValue: _customerId,
           isExpanded: true,
           decoration: InputDecoration(labelText: context.tr('Macmiil', 'Customer'), isDense: true),
           items: [
@@ -490,7 +490,7 @@ class _PosScreenState extends State<PosScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _paymentMode,
+          initialValue: _paymentMode,
           isExpanded: true,
           decoration: InputDecoration(labelText: context.tr('Qaabka bixinta', 'Payment mode'), isDense: true),
           items: [

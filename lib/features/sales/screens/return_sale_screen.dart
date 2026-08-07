@@ -194,7 +194,7 @@ class _ReturnSaleScreenState extends State<ReturnSaleScreen> {
                   }),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _refundMethod,
+                    initialValue: _refundMethod,
                     decoration: InputDecoration(labelText: context.tr('Qaabka celinta lacagta', 'Refund method'), prefixIcon: const Icon(Icons.payments_outlined)),
                     items: [
                       DropdownMenuItem(value: 'cash', child: Text(context.tr('Caddaan', 'Cash'))),
