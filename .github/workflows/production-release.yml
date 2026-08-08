@@ -1,0 +1,156 @@
+name: Produce Signed Android Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-android-release
+  cancel-in-progress: false
+
+jobs:
+  signed-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GRADLE_OPTS: -Dorg.gradle.vfs.watch=false
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/android/app/release-upload.jks
+      ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Require protected release secrets
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in \
+            SUPABASE_URL SUPABASE_ANON_KEY ANDROID_KEYSTORE_BASE64 \
+            ANDROID_STORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required GitHub Actions secret is missing: ${name}"
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.1"
+          cache: true
+
+      - name: Verify committed Android project
+        run: |
+          set -euo pipefail
+          test -f android/app/build.gradle.kts
+          test -f android/app/src/main/AndroidManifest.xml
+          test -f android/gradlew
+          test -f android/gradle/wrapper/gradle-wrapper.jar
+
+      - name: Install Android SDK 36
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+          set +o pipefail
+          yes | "$SDKMANAGER" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+          set -o pipefail
+
+      - name: Materialize protected release keystore
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
+          test -s "$ANDROID_KEYSTORE_PATH"
+          chmod 600 "$ANDROID_KEYSTORE_PATH"
+          keytool -list \
+            -keystore "$ANDROID_KEYSTORE_PATH" \
+            -storepass "$ANDROID_STORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" >/dev/null
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Generate splash and app icon
+        run: |
+          dart run flutter_native_splash:create
+          dart run flutter_launcher_icons
+
+      - name: Analyze code
+        run: flutter analyze --fatal-infos
+
+      - name: Run automated tests
+        run: flutter test --coverage
+
+      - name: Build signed production AAB and APK
+        run: |
+          set -euo pipefail
+          flutter build appbundle --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+
+      - name: Verify production signatures
+        run: |
+          set -euo pipefail
+          AAB="build/app/outputs/bundle/release/app-release.aab"
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          test -s "$AAB"
+          test -s "$APK"
+          jarsigner -verify -strict "$AAB"
+          CERT_INFO="$($APKSIGNER verify --verbose --print-certs "$APK")"
+          printf '%s\n' "$CERT_INFO"
+          printf '%s\n' "$CERT_INFO" | grep -qi "CN=Android Debug" && {
+            echo "::error::Production APK is signed with the Android debug certificate."
+            exit 1
+          }
+
+      - name: Create release manifest
+        run: |
+          set -euo pipefail
+          OUT="build/app/outputs/production-release"
+          mkdir -p "$OUT"
+          cp build/app/outputs/bundle/release/app-release.aab "$OUT/dukaan-dhisme-pos.aab"
+          cp build/app/outputs/flutter-apk/app-release.apk "$OUT/dukaan-dhisme-pos.apk"
+          VERSION="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n 1)"
+          cat > "$OUT/RELEASE_METADATA.txt" <<EOF
+          CHANNEL=PRODUCTION
+          VERSION=${VERSION}
+          GIT_SHA=${GITHUB_SHA}
+          APPLICATION_ID=com.dukaandhisme.dhisme_pos
+          TARGET_SDK=36
+          SIGNING=PROTECTED_RELEASE_KEY
+          EOF
+          (cd "$OUT" && sha256sum dukaan-dhisme-pos.aab dukaan-dhisme-pos.apk > SHA256SUMS)
+
+      - name: Upload signed production artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: dukaan-dhisme-pos-signed-production-release
+          path: build/app/outputs/production-release/
+          retention-days: 1
+
+      - name: Remove release keystore from runner
+        if: always()
+        run: rm -f "$ANDROID_KEYSTORE_PATH"
