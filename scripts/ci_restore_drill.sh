@@ -12,6 +12,24 @@ eval "$(supabase status -o env | grep '^DB_URL=')"
 test -n "${DB_URL:-}"
 SOURCE_DB_URL="$DB_URL"
 
+# This application currently defines no custom Postgres roles. A future custom
+# role requires an explicit restore policy/password procedure rather than
+# silently treating it as a Supabase-managed role.
+CUSTOM_ROLES="$(psql "$SOURCE_DB_URL" -X -A -t -c "
+  select string_agg(rolname, ',')
+  from pg_roles
+  where rolname !~ '^pg_'
+    and rolname !~ '^supabase_'
+    and rolname not in (
+      'postgres','anon','authenticated','authenticator','service_role',
+      'dashboard_user','pgbouncer','cli_login_postgres'
+    );
+")"
+if [ -n "$CUSTOM_ROLES" ]; then
+  echo "Unsupported custom database roles detected for automated restore: $CUSTOM_ROLES" >&2
+  exit 1
+fi
+
 # Seed a coherent business fixture through the real v2 transactional API.
 psql "$SOURCE_DB_URL" --variable ON_ERROR_STOP=1 \
   --file scripts/restore_drill_fixture.sql
@@ -91,7 +109,7 @@ restore_repo_paths() {
 }
 trap restore_repo_paths EXIT
 
-# Clean Supabase target: managed schemas exist, app migrations/seed do not run.
+# Clean Supabase target: managed schemas/roles exist, app migrations/seed do not run.
 supabase db start
 eval "$(supabase status -o env | grep '^DB_URL=')"
 test -n "${DB_URL:-}"
@@ -100,11 +118,26 @@ TARGET_DB_URL="$DB_URL"
 CLEAN_CHECK="$(psql "$TARGET_DB_URL" -X -A -t -c "select to_regclass('public.stores') is null")"
 test "$CLEAN_CHECK" = "t"
 
-# Supabase-documented logical restore sequence.
+for required_role in anon authenticated authenticator service_role; do
+  ROLE_EXISTS="$(psql "$TARGET_DB_URL" -X -A -t -c "select exists(select 1 from pg_roles where rolname='$required_role')")"
+  test "$ROLE_EXISTS" = "t"
+done
+
+# The encrypted archive retains roles.sql for inspection/recovery. For this
+# project, however, every DB role is Supabase-managed; a fresh Supabase target
+# must retain its own managed role attributes/settings. This avoids transplanting
+# non-portable ALTER ROLE settings such as log_min_messages. If custom app roles
+# are introduced later, the source check above makes this drill fail closed.
+#
+# Supabase CLI also documents resetting target default table privileges before
+# schema restore so the dump's explicit privileges remain authoritative.
+psql "$TARGET_DB_URL" --variable ON_ERROR_STOP=1 <<'SQL'
+alter default privileges in schema public revoke all on tables from anon, authenticated;
+SQL
+
 psql "$TARGET_DB_URL" \
   --single-transaction \
   --variable ON_ERROR_STOP=1 \
-  --file "$RESTORE_WORK/roles.sql" \
   --file "$RESTORE_WORK/schema.sql" \
   --command 'SET session_replication_role = replica' \
   --file "$RESTORE_WORK/data.sql"
@@ -145,6 +178,10 @@ begin
   ) then
     raise exception 'record_purchase_v2 SECURITY DEFINER contract missing after restore';
   end if;
+  if has_function_privilege('anon','public.new_return_no()','execute')
+     or has_function_privilege('authenticated','public.new_return_no()','execute') then
+    raise exception 'Internal return-number helper became directly executable after restore';
+  end if;
 end $$;
 SQL
 
@@ -156,10 +193,11 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
   {
     echo "### Supabase encrypted restore drill"
     echo "- Clean target verified before restore: yes"
+    echo "- Supabase-managed target roles preserved: yes"
     echo "- Encrypted archive integrity: pass"
     echo "- Source/restore business manifest: exact match"
     echo "- Post-restore pgTAP security/RLS suite: pass"
-    echo "- Migrations 028/029 privilege invariants: pass"
+    echo "- Migrations 028–032 recovery/security invariants: pass"
     echo "- Measured restore duration: ${RESTORE_SECONDS} seconds"
   } >> "$GITHUB_STEP_SUMMARY"
 fi
