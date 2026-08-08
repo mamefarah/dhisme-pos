@@ -43,15 +43,3 @@ jobs:
         run: |
           set -o pipefail
           flutter test --coverage 2>&1 | tee test.log
-
-      - name: Upload failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v6
-        with:
-          name: flutter-validation-diagnostics
-          path: |
-            analyze.log
-            test.log
-            coverage/lcov.info
-          if-no-files-found: ignore
-          retention-days: 1
