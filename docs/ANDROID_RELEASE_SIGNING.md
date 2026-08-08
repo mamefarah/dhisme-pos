@@ -35,7 +35,7 @@ Do not change it after pilot distribution unless you intentionally want Android 
 Run on a secure machine with JDK 17:
 
 ```bash
-./scripts/generate_android_upload_key.sh
+bash scripts/generate_android_upload_key.sh
 ```
 
 Default output:
