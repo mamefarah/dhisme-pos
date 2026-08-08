@@ -48,17 +48,21 @@ values (
 )
 on conflict (id) do nothing;
 
-select set_config('request.jwt.claim.sub', '91111111-1111-4111-8111-111111111111', false);
-set role authenticated;
-
+-- Deterministic reference row for purchase/restore comparison. Authenticated
+-- supplier-creation privileges are separately exercised by the 30-test pgTAP
+-- security suite; transaction flows below run as the actual Owner role.
 insert into public.suppliers (
-  id, name, phone, address, contact_person, notes
+  id, store_id, name, phone, address, contact_person, notes
 )
 values (
   '95555555-5555-4555-8555-555555555555',
+  '90000000-0000-0000-0000-000000000001',
   'Restore Drill Supplier', '0911000000', 'Jigjiga', 'Restore Contact', 'restore fixture'
 )
 on conflict (id) do nothing;
+
+select set_config('request.jwt.claim.sub', '91111111-1111-4111-8111-111111111111', false);
+set role authenticated;
 
 select public.record_purchase_v2(
   '[{"product_id":"93333333-3333-4333-8333-333333333333","quantity":3,"unit_cost":50}]'::jsonb,
