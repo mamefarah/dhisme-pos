@@ -59,9 +59,9 @@ class _CustomerStatementScreenState extends State<CustomerStatementScreen> {
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(24),
       build: (_) => [
-        pw.Text('Dukaan Dhisme POS', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        pw.Text('Dukaan Dhisme POS', style: const pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 8),
-        pw.Text(title, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text(title, style: const pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 12),
         pw.Text('${AppLanguage.instance.isSomali ? 'Macmiil' : 'Customer'}: ${widget.customer.name}'),
         if (widget.customer.phone != null) pw.Text('${AppLanguage.instance.isSomali ? 'Telefoon' : 'Phone'}: ${widget.customer.phone}'),
@@ -74,16 +74,16 @@ class _CustomerStatementScreenState extends State<CustomerStatementScreen> {
           _summaryRow(AppLanguage.instance.isSomali ? 'Deyn taagan' : 'Current balance', money(balance), bold: true),
         ]),
         pw.SizedBox(height: 16),
-        pw.Text(AppLanguage.instance.isSomali ? 'Iibka Deynta ah' : 'Credit Sales', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.Text(AppLanguage.instance.isSomali ? 'Iibka Deynta ah' : 'Credit Sales', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 6),
         _simpleTable(sales, ['invoice_no', 'created_at', 'total_amount', 'balance_amount']),
         pw.SizedBox(height: 16),
-        pw.Text(AppLanguage.instance.isSomali ? 'Lacag Bixinno' : 'Payments', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.Text(AppLanguage.instance.isSomali ? 'Lacag Bixinno' : 'Payments', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 6),
         _simpleTable(payments, ['created_at', 'amount', 'payment_method', 'reference_no']),
         if (returns.isNotEmpty) ...[
           pw.SizedBox(height: 16),
-          pw.Text(AppLanguage.instance.isSomali ? 'Celino' : 'Returns', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text(AppLanguage.instance.isSomali ? 'Celino' : 'Returns', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
           _simpleTable(returns, ['return_no', 'created_at', 'refund_amount', 'reason']),
         ],
@@ -102,7 +102,7 @@ class _CustomerStatementScreenState extends State<CustomerStatementScreen> {
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300),
       children: [
-        pw.TableRow(children: cols.map((c) => pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(c, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)))).toList()),
+        pw.TableRow(children: cols.map((c) => pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(c, style: const pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)))).toList()),
         ...rows.map((r) => pw.TableRow(children: cols.map((c) {
           final v = r[c];
           final text = v is num && c.contains('amount') ? money(v.toDouble()) : (v?.toString() ?? '');
