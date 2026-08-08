@@ -50,7 +50,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
               if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
               final suppliers = snapshot.data!;
               if (suppliers.isEmpty) return EmptyState(message: _activeOnly || _search.text.isNotEmpty ? context.tr('Alaab-qeybiye ku habboon filter-ka lama helin.', 'No suppliers match your filter.') : _canEdit ? context.tr('Weli alaab-qeybiye ma jiro. Taabo + si aad mid ugu darto.', 'No suppliers yet. Tap + to add one.') : context.tr('Weli alaab-qeybiye lama darin.', 'No suppliers added yet.'));
-              return RefreshIndicator(onRefresh: () async => _reload(), child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: suppliers.length, itemBuilder: (context, i) { final s = suppliers[i]; return _SupplierTile(supplier: s, canEdit: _canEdit, onTap: () async { await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SupplierDetailScreen(supplier: s))); _reload(); }); }));
+              return RefreshIndicator(onRefresh: () async => _reload(), child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: suppliers.length, itemBuilder: (context, i) { final s = suppliers[i]; return _SupplierTile(supplier: s, canEdit: _canEdit, onTap: () async { await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SupplierDetailScreen(supplier: s, profile: widget.profile))); _reload(); }); }));
             },
           )),
         ]),
