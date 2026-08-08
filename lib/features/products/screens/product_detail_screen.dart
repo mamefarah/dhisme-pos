@@ -55,8 +55,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: context.tr('Wax ka beddel alaabta', 'Edit product'),
                 onPressed: () async {
-                  final updated = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => ProductFormScreen(profile: widget.profile, product: p)));
-                  if (updated == true && mounted) Navigator.of(context).pop(true);
+                  final navigator = Navigator.of(context);
+                  final updated = await navigator.push<bool>(MaterialPageRoute(builder: (_) => ProductFormScreen(profile: widget.profile, product: p)));
+                  if (!mounted) return;
+                  if (updated == true) navigator.pop(true);
                 },
               ),
           ],
