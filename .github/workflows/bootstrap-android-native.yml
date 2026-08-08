@@ -1,0 +1,59 @@
+name: Bootstrap Android Native Project
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap-android:
+    if: github.head_ref == 'agent/controlled-pilot-release-engineering'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.1"
+          cache: true
+
+      - name: Generate and commit stable Android project
+        run: |
+          set -euo pipefail
+          if [ -d android ]; then
+            echo "android/ already exists; nothing to bootstrap."
+            exit 0
+          fi
+
+          TEMP_PROJECT="$(mktemp -d)"
+          flutter create "$TEMP_PROJECT" \
+            --project-name dhisme_pos \
+            --org com.dukaandhisme \
+            --platforms=android
+          mv "$TEMP_PROJECT/android" ./android
+          rm -rf "$TEMP_PROJECT"
+
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "android.permission.INTERNET" "$MANIFEST"; then
+            sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
+          fi
+          if ! grep -q "android.permission.ACCESS_NETWORK_STATE" "$MANIFEST"; then
+            sed -i '/<manifest/a\    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' "$MANIFEST"
+          fi
+          sed -i 's/android:label="[^"]*"/android:label="Dukaan Dhisme POS"/g' "$MANIFEST"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android
+          git commit -m "stabilize Android native project"
+          git push origin "HEAD:${{ github.head_ref }}"
