@@ -196,7 +196,7 @@ class _NewPurchaseV2ScreenState extends State<NewPurchaseV2Screen> {
                     onTap: _pickDate,
                   ),
                   DropdownButtonFormField<Supplier?>(
-                    value: _supplier,
+                    initialValue: _supplier,
                     isExpanded: true,
                     decoration: InputDecoration(labelText: context.tr('Alaab-qeybiye', 'Supplier')),
                     items: [
@@ -212,7 +212,7 @@ class _NewPurchaseV2ScreenState extends State<NewPurchaseV2Screen> {
                   ),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: _status,
+                    initialValue: _status,
                     decoration: InputDecoration(labelText: context.tr('Xaaladda bixinta', 'Payment status')),
                     items: [
                       DropdownMenuItem(value: 'paid', child: Text(context.tr('La bixiyay', 'Paid'))),
@@ -236,7 +236,7 @@ class _NewPurchaseV2ScreenState extends State<NewPurchaseV2Screen> {
                   if (_status != 'unpaid') ...[
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      value: _method,
+                      initialValue: _method,
                       decoration: InputDecoration(labelText: context.tr('Qaabka bixinta', 'Payment method')),
                       items: [
                         DropdownMenuItem(value: 'cash', child: Text(context.tr('Caddaan', 'Cash'))),
@@ -264,7 +264,7 @@ class _NewPurchaseV2ScreenState extends State<NewPurchaseV2Screen> {
                     Row(children: [
                       Expanded(
                         child: DropdownButtonFormField<Product>(
-                          value: line.product,
+                          initialValue: line.product,
                           isExpanded: true,
                           decoration: InputDecoration(labelText: context.tr('Alaab', 'Product')),
                           items: _products.map((p) => DropdownMenuItem(value: p, child: Text(p.name, overflow: TextOverflow.ellipsis))).toList(),

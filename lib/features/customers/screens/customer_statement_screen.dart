@@ -1,3 +1,8 @@
+// The pdf package exposes TextStyle/FontWeight combinations that the Flutter
+// const-constructor lint can suggest even though Dart cannot const-evaluate
+// those FontWeight operands. Keep these PDF styles runtime-constructed.
+// ignore_for_file: prefer_const_constructors
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -106,7 +111,7 @@ class _CustomerStatementScreenState extends State<CustomerStatementScreen> {
         ...rows.map((r) => pw.TableRow(children: cols.map((c) {
           final v = r[c];
           final text = v is num && c.contains('amount') ? money(v.toDouble()) : (v?.toString() ?? '');
-          return pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(text, style: const pw.TextStyle(fontSize: 8)));
+          return pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(text, style: pw.TextStyle(fontSize: 8)));
         }).toList())),
       ],
     );

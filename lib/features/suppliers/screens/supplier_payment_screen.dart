@@ -110,7 +110,7 @@ class _SupplierPaymentScreenState extends State<SupplierPaymentScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _paymentMethod,
+                initialValue: _paymentMethod,
                 decoration: InputDecoration(labelText: context.tr('Qaabka bixinta', 'Payment method'), prefixIcon: const Icon(Icons.credit_card_outlined)),
                 items: [
                   DropdownMenuItem(value: 'cash', child: Text(context.tr('Caddaan', 'Cash'))),

@@ -40,13 +40,26 @@ class _CreateInviteScreenState extends State<CreateInviteScreen> {
         body: ListView(padding: const EdgeInsets.all(24), children: [
           Text(context.tr('Dooro doorka shaqaalaha cusub, kadib samee invite code. La wadaag code-ka shaqaalaha — wuxuu gelinayaa marka uu akoon samaynayo.', 'Select the role for the new employee, then generate an invite code. Share the code with the employee — they enter it when signing up.'), style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 24),
-          Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(context.tr('Doorka shaqaalaha cusub', 'Role for new employee'), style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            _RoleOption(value: 'seller', groupValue: _role, label: context.tr('Iibiye', 'Seller'), description: context.tr('Wuxuu isticmaali karaa POS, arki karaa alaab/macaamiil, wuxuuna gudbin karaa xiritaanka lacagta.', 'Can use POS, view products and customers, submit cash closing.'), onChanged: (v) => setState(() => _role = v!)),
-            const Divider(height: 1),
-            _RoleOption(value: 'manager', groupValue: _role, label: context.tr('Maamule', 'Manager'), description: context.tr('Wuxuu leeyahay awoodaha iibiyeha iyo maamulka dheeraadka ah.', 'Same as seller, with additional management access.'), onChanged: (v) => setState(() => _role = v!)),
-          ]))),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(context.tr('Doorka shaqaalaha cusub', 'Role for new employee'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                RadioGroup<String>(
+                  groupValue: _role,
+                  onChanged: (value) {
+                    if (value != null) setState(() => _role = value);
+                  },
+                  child: Column(children: [
+                    _RoleOption(value: 'seller', label: context.tr('Iibiye', 'Seller'), description: context.tr('Wuxuu isticmaali karaa POS, arki karaa alaab/macaamiil, wuxuuna gudbin karaa xiritaanka lacagta.', 'Can use POS, view products and customers, submit cash closing.')),
+                    const Divider(height: 1),
+                    _RoleOption(value: 'manager', label: context.tr('Maamule', 'Manager'), description: context.tr('Wuxuu leeyahay awoodaha iibiyeha iyo maamulka dheeraadka ah.', 'Same as seller, with additional management access.')),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
           const SizedBox(height: 20),
           FilledButton.icon(onPressed: _loading ? null : _generate, icon: _loading ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.key_outlined), label: Text(context.tr('Samee Invite Code', 'Generate Invite Code'))),
           if (_generatedCode != null) ...[
@@ -77,12 +90,16 @@ class _CreateInviteScreenState extends State<CreateInviteScreen> {
 }
 
 class _RoleOption extends StatelessWidget {
-  const _RoleOption({required this.value, required this.groupValue, required this.label, required this.description, required this.onChanged});
+  const _RoleOption({required this.value, required this.label, required this.description});
   final String value;
-  final String groupValue;
   final String label;
   final String description;
-  final ValueChanged<String?> onChanged;
+
   @override
-  Widget build(BuildContext context) => RadioListTile<String>(value: value, groupValue: groupValue, onChanged: onChanged, title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)), subtitle: Text(description, style: const TextStyle(fontSize: 12)), contentPadding: EdgeInsets.zero);
+  Widget build(BuildContext context) => RadioListTile<String>(
+        value: value,
+        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(description, style: const TextStyle(fontSize: 12)),
+        contentPadding: EdgeInsets.zero,
+      );
 }

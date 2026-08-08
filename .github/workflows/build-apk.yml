@@ -27,10 +27,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -61,7 +61,13 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -d "android" ]; then
-            flutter create . --project-name dhisme_pos --org com.dukaandhisme --platforms=android
+            TEMP_PROJECT="$(mktemp -d)"
+            flutter create "$TEMP_PROJECT" \
+              --project-name dhisme_pos \
+              --org com.dukaandhisme \
+              --platforms=android
+            mv "$TEMP_PROJECT/android" ./android
+            rm -rf "$TEMP_PROJECT"
           fi
 
       - name: Configure Android manifest
@@ -102,7 +108,7 @@ jobs:
           dart run flutter_launcher_icons
 
       - name: Analyze code
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze --fatal-infos
 
       - name: Run automated tests
         run: flutter test --coverage
@@ -116,10 +122,11 @@ jobs:
             > build/app/outputs/flutter-apk/BUILD_CHANNEL.txt
 
       - name: Upload validation artifact
-        uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v6
         with:
           name: dukaan-dhisme-pos-unsigned-validation-apk
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/flutter-apk/BUILD_CHANNEL.txt
-          retention-days: 7
+          retention-days: 1

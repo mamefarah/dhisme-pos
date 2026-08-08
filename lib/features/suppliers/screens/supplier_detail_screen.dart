@@ -3,14 +3,16 @@ import '../../../core/i18n/app_language.dart';
 import '../../../core/utils/dates.dart';
 import '../../../core/utils/errors.dart';
 import '../../../core/utils/money.dart';
+import '../../auth/models/app_profile.dart';
 import '../data/supplier_repository.dart';
 import '../models/supplier.dart';
 import 'supplier_form_screen.dart';
 import 'supplier_payment_screen.dart';
 
 class SupplierDetailScreen extends StatefulWidget {
-  const SupplierDetailScreen({super.key, required this.supplier});
+  const SupplierDetailScreen({super.key, required this.supplier, required this.profile});
   final Supplier supplier;
+  final AppProfile profile;
 
   @override
   State<SupplierDetailScreen> createState() => _SupplierDetailScreenState();
@@ -19,6 +21,7 @@ class SupplierDetailScreen extends StatefulWidget {
 class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
   final _repo = SupplierRepository();
   late Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)> _future;
+  bool get _canEdit => widget.profile.isOwner || widget.profile.isManager;
 
   @override
   void initState() { super.initState(); _reload(); }
@@ -34,7 +37,19 @@ class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
         child: Scaffold(
           appBar: AppBar(
             title: Text(s.name),
-            actions: [IconButton(icon: const Icon(Icons.edit_outlined), tooltip: context.tr('Wax ka beddel', 'Edit'), onPressed: () async { await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SupplierFormScreen(supplier: s))); if (mounted) Navigator.of(context).pop(true); })],
+            actions: [
+              if (_canEdit)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: context.tr('Wax ka beddel', 'Edit'),
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    await navigator.push(MaterialPageRoute(builder: (_) => SupplierFormScreen(supplier: s)));
+                    if (!mounted) return;
+                    navigator.pop(true);
+                  },
+                ),
+            ],
             bottom: TabBar(tabs: [Tab(text: context.tr('Iibsiyo', 'Purchases')), Tab(text: context.tr('Bixinno', 'Payments'))]),
           ),
           body: Column(children: [
@@ -42,7 +57,19 @@ class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
               Row(children: [CircleAvatar(backgroundColor: Colors.teal.withValues(alpha: 0.12), child: const Icon(Icons.local_shipping_outlined, color: Colors.teal)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(s.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), if (s.phone != null) Text(s.phone!, style: const TextStyle(fontSize: 13, color: Colors.black54)), if (s.contactPerson != null) Text('${context.tr('Xiriir', 'Contact')}: ${s.contactPerson}', style: const TextStyle(fontSize: 13, color: Colors.black54))]))]),
               const SizedBox(height: 12),
               Card(color: s.hasDebt ? Colors.orange.shade50 : Colors.green.shade50, margin: EdgeInsets.zero, child: ListTile(leading: Icon(Icons.account_balance_wallet_outlined, color: s.hasDebt ? Colors.orange.shade800 : Colors.green.shade700), title: Text(s.hasDebt ? context.tr('Deyn taagan', 'Outstanding balance') : context.tr('Deyn ma jirto', 'No supplier debt')), trailing: Text(money(s.totalBalance), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: s.hasDebt ? Colors.orange.shade800 : Colors.green.shade700)))),
-              if (s.hasDebt) ...[const SizedBox(height: 10), FilledButton.icon(onPressed: () async { final paid = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => SupplierPaymentScreen(supplier: s))); if (paid == true && mounted) Navigator.of(context).pop(true); }, icon: const Icon(Icons.payments_outlined), label: Text(context.tr('Diiwaangeli Bixin', 'Record Payment')))],
+              if (_canEdit && s.hasDebt) ...[
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    final paid = await navigator.push<bool>(MaterialPageRoute(builder: (_) => SupplierPaymentScreen(supplier: s)));
+                    if (!mounted) return;
+                    if (paid == true) navigator.pop(true);
+                  },
+                  icon: const Icon(Icons.payments_outlined),
+                  label: Text(context.tr('Diiwaangeli Bixin', 'Record Payment')),
+                ),
+              ],
             ])),
             const Divider(height: 1),
             Expanded(child: FutureBuilder<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)>(
