@@ -31,7 +31,7 @@ insert into public.products (
   minimum_selling_price, current_stock, minimum_stock
 )
 values (
-  '93333333-3333-4333-8333-333333333333',
+  '93333333-3333-4333-8332-333333333333',
   '90000000-0000-0000-0000-000000000001',
   '92222222-2222-4222-8222-222222222222',
   'Restore Drill Product', 'piece', 40, 80, 60, 5, 1
@@ -65,7 +65,7 @@ select set_config('request.jwt.claim.sub', '91111111-1111-4111-8111-111111111111
 set role authenticated;
 
 select public.record_purchase_v2(
-  '[{"product_id":"93333333-3333-4333-8333-333333333333","quantity":3,"unit_cost":50}]'::jsonb,
+  '[{"product_id":"93333333-3333-4333-8332-333333333333","quantity":3,"unit_cost":50}]'::jsonb,
   '95555555-5555-4555-8555-555555555555'::uuid,
   'RESTORE-PO-1', current_date, 50, 'cash', 'restore fixture purchase',
   'restore-purchase-0001'
@@ -73,15 +73,20 @@ select public.record_purchase_v2(
 
 select public.create_cash_sale_v2(
   '94444444-4444-4444-8444-444444444444'::uuid,
-  '[{"product_id":"93333333-3333-4333-8333-333333333333","quantity":1}]'::jsonb,
+  '[{"product_id":"93333333-3333-4333-8332-333333333333","quantity":1}]'::jsonb,
   '[{"payment_method":"cash","amount":80}]'::jsonb,
   0, 'restore fixture cash sale', 'restore-cash-sale-0001'
 ) as cash_sale_id \gset
 
+-- sale_items is intentionally not directly readable by authenticated clients.
+-- The fixture/admin role obtains the generated ID only to feed the trusted
+-- return RPC, then immediately restores the Owner role.
+reset role;
 select id as cash_sale_item_id
 from public.sale_items
 where sale_id = :'cash_sale_id'::uuid
 limit 1 \gset
+set role authenticated;
 
 select public.record_return_v2(
   :'cash_sale_id'::uuid,
@@ -91,7 +96,7 @@ select public.record_return_v2(
 
 select public.request_credit_sale_v2(
   '94444444-4444-4444-8444-444444444444'::uuid,
-  '[{"product_id":"93333333-3333-4333-8333-333333333333","quantity":1}]'::jsonb,
+  '[{"product_id":"93333333-3333-4333-8332-333333333333","quantity":1}]'::jsonb,
   'restore drill credit', 0, 'restore fixture credit sale',
   'restore-credit-request-0001'
 ) as request_id \gset
