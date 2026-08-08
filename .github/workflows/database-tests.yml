@@ -1,0 +1,39 @@
+name: Validate Supabase Database
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: latest
+          github-token: ${{ github.token }}
+
+      - name: Initialize isolated local Supabase config
+        run: supabase init --force
+
+      - name: Rebuild database from committed migrations
+        run: supabase db start
+
+      - name: Run database security and RLS tests
+        run: supabase test db --local
