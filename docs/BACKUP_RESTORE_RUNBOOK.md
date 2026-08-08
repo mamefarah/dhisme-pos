@@ -36,7 +36,7 @@ From the repository root:
 ```bash
 export SUPABASE_DB_URL='postgresql://...'
 export BACKUP_ENCRYPTION_PASSPHRASE='use-a-long-unique-secret'
-./scripts/backup_supabase.sh
+bash scripts/backup_supabase.sh
 ```
 
 The script creates:
@@ -58,7 +58,7 @@ A backup is not considered successful until integrity verification passes:
 
 ```bash
 export BACKUP_ENCRYPTION_PASSPHRASE='same-secret-used-for-backup'
-./scripts/verify_supabase_backup.sh backups/dhisme-pos-YYYYMMDDTHHMMSSZ.tar.gz.enc
+bash scripts/verify_supabase_backup.sh backups/dhisme-pos-YYYYMMDDTHHMMSSZ.tar.gz.enc
 ```
 
 Expected result:
