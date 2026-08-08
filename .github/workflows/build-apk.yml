@@ -61,7 +61,13 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -d "android" ]; then
-            flutter create . --project-name dhisme_pos --org com.dukaandhisme --platforms=android
+            TEMP_PROJECT="$(mktemp -d)"
+            flutter create "$TEMP_PROJECT" \
+              --project-name dhisme_pos \
+              --org com.dukaandhisme \
+              --platforms=android
+            mv "$TEMP_PROJECT/android" ./android
+            rm -rf "$TEMP_PROJECT"
           fi
 
       - name: Configure Android manifest
