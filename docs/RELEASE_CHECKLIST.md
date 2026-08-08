@@ -12,6 +12,7 @@ The following repository/database gates have been completed and independently re
 - [x] Live rollback-safe Owner/Seller/cross-store verification passed after deployment of the balance hardening.
 - [x] Recovery validation captured previously hidden production schema drift for return numbering, expense timestamps and cash-adjustment timestamps in migrations 030–032.
 - [x] Encrypted logical backup → clean target → exact transactional-manifest restore passed; measured technical restore duration was **37 seconds** in CI.
+- [x] Migrations 030–032 were deployed to the connected live Supabase project and verified with rollback-safe return, expense and cash-adjustment smoke transactions.
 - [x] Flutter analyzer passes with `--fatal-infos`.
 - [x] Automated Flutter tests pass.
 - [x] Android release-mode validation compilation passes.
@@ -35,14 +36,16 @@ Use the committed migration history as the source of truth. Do **not** apply onl
 - [x] Verify approved SECURITY DEFINER transaction RPCs can still maintain financial state.
 - [x] Verify `new_return_no()` is available to trusted return logic but not directly executable by API client roles.
 - [x] Deploy and verify the aggregate-balance hardening on the connected live Supabase project.
-- [ ] Deploy validated migration-history alignment 030–032 to the connected live project after PR #36 exact-head checks are green.
+- [x] Deploy migration-history alignment 030–032 to the connected live project.
+- [x] Live rollback-safe smoke test confirms return number generation, expense ledger writes and cash-adjustment ledger writes succeed; rollback leaves zero smoke rows and unchanged stock.
 
 ## 2. Supabase project security
 
 - [x] `SUPABASE_URL` and the publishable/anon client key are supplied through build-time configuration; no service-role credential is embedded in Flutter source.
 - [x] No `service_role` key is used by the Flutter application or validation build pipeline.
 - [x] RLS/tenant behavior for the customer/supplier hardening is covered by automated database tests.
-- [x] Supabase security advisor reviewed after the prior deployment.
+- [x] Supabase security advisor reviewed after deployment of migrations 030–032; no new RLS/financial-balance regression was reported.
+- [x] Internal `new_return_no()` has no direct EXECUTE privilege for `anon` or `authenticated`.
 - [x] Account creation has an app-side compensating password policy: 12+ characters including uppercase, lowercase, number, and symbol.
 - [ ] Configure the Supabase Auth server-side minimum password length and required character classes to match the app policy.
 - [ ] Enable leaked-password protection before unrestricted production use if required. **Blocked on the current Supabase Free plan; Supabase currently exposes this feature on Pro and above.**
@@ -59,11 +62,11 @@ For every release candidate:
 - [x] `flutter analyze --fatal-infos` reports `No issues found` on that baseline.
 - [x] Automated Flutter tests pass.
 - [x] **Validate Supabase Database** rebuilds the migration chain and passes 30/30 database tests.
-- [x] Database CI now performs encrypted backup, clean restore, exact manifest comparison, post-restore pgTAP, and recovery-invariant checks.
+- [x] Database CI performs encrypted backup, clean restore, exact manifest comparison, post-restore pgTAP, and recovery-invariant checks.
 - [x] **Build Dukaan Dhisme POS Validation APK** compiles successfully on the merged release-engineering baseline.
 - [x] Validation jobs no longer depend on artifact upload, avoiding the previous artifact-quota failure mode.
 - [x] Validation workflow builds from the committed Android project rather than generating native files at runtime.
-- [ ] PR #36 final exact-head Flutter/database/Android checks are all green after the recovery documentation updates.
+- [x] PR #36 recovery candidate `d7d49e3f3f749da83bead39b86fa00d4fdc53a87` passed Flutter #74, database/restore #47, and Android #181 before the final live-deployment status documentation update.
 
 The normal PR/push workflow verifies compilation but does not retain an APK. To obtain an installable validation APK, manually run **Build Dukaan Dhisme POS Validation APK** with `workflow_dispatch`.
 
