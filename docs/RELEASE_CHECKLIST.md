@@ -12,9 +12,11 @@ The following repository/database gates have been completed and independently re
 - [x] Live rollback-safe Owner/Seller/cross-store verification passed after deployment of the balance hardening.
 - [x] Flutter analyzer passes with `--fatal-infos`.
 - [x] Automated Flutter tests pass.
-- [x] Android release-mode validation APK compilation passes.
+- [x] Android release-mode validation compilation passes.
+- [x] Android native project and Gradle wrapper are committed instead of generated ad hoc by each release build.
+- [x] Validation and production signing paths are explicitly separated in Gradle/CI.
 
-The remaining unchecked items are operational/pilot/production gates, not hidden code-completion claims.
+The remaining unchecked items are operational/pilot/account-configuration gates, not hidden code-completion claims.
 
 ---
 
@@ -37,26 +39,31 @@ Use the committed migration history as the source of truth. Do **not** apply onl
 - [x] No `service_role` key is used by the Flutter application or validation build pipeline.
 - [x] RLS/tenant behavior for the customer/supplier hardening is covered by automated database tests.
 - [x] Supabase security advisor reviewed after deployment.
-- [ ] Enable leaked-password protection before unrestricted production use. **Current advisor status: disabled.**
+- [x] Account creation has an app-side compensating password policy: 12+ characters including uppercase, lowercase, number, and symbol.
+- [ ] Enable leaked-password protection before unrestricted production use. **Blocked on the current Supabase Free plan; Supabase currently exposes this feature on Pro and above.**
 - [ ] Confirm Authentication email/redirect settings match the intended pilot onboarding flow.
 - [ ] Maintain an explicit reviewed allowlist of authenticated SECURITY DEFINER RPCs. These RPCs are intentionally used as the server-side transaction boundary; do not blindly revoke them based only on the generic advisor warning.
+
+The app-side password rule is not a substitute for server-side leaked-password screening.
 
 ## 3. GitHub validation
 
 For every release candidate:
 
-- [x] **Validate Dukaan Dhisme POS** is green for the current remediation.
-- [x] `flutter analyze --fatal-infos` reports `No issues found`.
+- [x] **Validate Dukaan Dhisme POS** is green for the completed remediation baseline.
+- [x] `flutter analyze --fatal-infos` reports `No issues found` on that baseline.
 - [x] Automated Flutter tests pass.
 - [x] **Validate Supabase Database** rebuilds the migration chain and passes 30/30 database tests.
-- [x] **Build Dukaan Dhisme POS Validation APK** compiles successfully.
+- [x] **Build Dukaan Dhisme POS Validation APK** compiles successfully on the completed remediation baseline.
 - [x] Validation jobs no longer depend on artifact upload, avoiding the previous artifact-quota failure mode.
+- [x] Validation workflow now builds from the committed Android project rather than generating native files at runtime.
 
 The normal PR/push workflow verifies compilation but does not retain an APK. To obtain an installable validation APK, manually run **Build Dukaan Dhisme POS Validation APK** with `workflow_dispatch`.
 
-- [ ] Manual APK workflow run succeeds after GitHub artifact storage is available.
-- [ ] Artifact `dukaan-dhisme-pos-unsigned-validation-apk` is available.
-- [ ] `BUILD_CHANNEL.txt` confirms it is an unsigned validation build.
+- [ ] Current PR #34 exact-head Flutter/database/Android checks are all green.
+- [ ] Manual APK workflow run succeeds after PR #34 is merged.
+- [ ] Artifact `dukaan-dhisme-pos-validation-apk` is available.
+- [ ] `BUILD_CHANNEL.txt` confirms **release mode / debug signing / non-production**.
 - [ ] APK installs on the actual Android phones intended for the pilot.
 - [ ] App opens, signs in, resumes, and relaunches without crashing.
 
@@ -66,6 +73,7 @@ The normal PR/push workflow verifies compilation but does not retain an APK. To 
 - [ ] `current_user_store_id()` resolves the correct store UUID.
 - [ ] Owner creates seller and manager invite codes.
 - [ ] Seller/manager joins the correct store and receives the correct role.
+- [ ] New Owner and employee accounts reject passwords that do not meet the app's strong-password rule.
 - [ ] Deactivated users cannot continue protected business operations.
 
 ## 5. Financial and operational pilot test
@@ -100,26 +108,28 @@ Automated database coverage now exercises these controls, but repeat the user-vi
 
 ## 7. Backup, recovery, and observability
 
-Required before unrestricted production rollout:
-
-- [ ] Database backup policy is configured and documented.
-- [ ] A restore drill has been completed against a non-production project/database.
-- [ ] Flutter crash/error monitoring is configured.
-- [ ] Operational alerts exist for material backend failures.
-- [ ] A support/escalation process exists for reconciliation or data-integrity incidents.
+- [x] Free-plan independent backup policy is documented in `docs/BACKUP_RESTORE_RUNBOOK.md`.
+- [x] Encrypted logical backup and integrity-verification scripts are committed; local backup output is Git-ignored.
+- [x] Pilot incident severity/escalation process is documented in `docs/OBSERVABILITY_RUNBOOK.md`.
+- [ ] Perform the first encrypted live backup and verify it successfully.
+- [ ] Complete a restore drill against a disposable/non-production project/database and record measured RTO.
+- [ ] Configure persistent Flutter crash/error monitoring with an approved provider/privacy configuration.
+- [ ] Configure operational alerts for material backend failures and backup failures.
 
 ## 8. Production Android release gate
 
-The current GitHub APK is an **unsigned validation build**. Do not distribute it as the final production release.
-
-Before production:
-
-- [ ] Commit/stabilize the intended Android native project configuration rather than relying on generated validation-only Android files.
-- [ ] Configure protected Android signing credentials/secrets.
-- [ ] Produce and verify a signed release APK/AAB.
-- [ ] Increment app version/build number for every production candidate.
-- [ ] Verify package/application ID, target/compile SDK, permissions, backup settings, and release shrink/obfuscation policy.
-- [ ] Test upgrade from the pilot build to the signed production build without data/session surprises.
+- [x] Commit/stabilize the Android native project and Gradle wrapper.
+- [x] Freeze application ID `com.dukaandhisme.dhisme_pos` and target/compile SDK 36 for this release line.
+- [x] Gradle refuses a normal production release task without protected release signing credentials.
+- [x] Add a manual `Produce Signed Android Release` workflow that builds APK+AAB, verifies signatures, rejects the Android Debug certificate, and produces SHA-256 checksums.
+- [x] Document signing-key generation/custody and GitHub secret names in `docs/ANDROID_RELEASE_SIGNING.md`.
+- [ ] Generate and securely back up the long-lived Android upload/release keystore.
+- [ ] Configure `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`, `ANDROID_STORE_PASSWORD`, and `ANDROID_KEY_PASSWORD` as protected GitHub Actions secrets.
+- [ ] Produce and verify the first signed APK/AAB.
+- [ ] Increment app version/build number for the actual pilot/production candidate.
+- [ ] Decide whether pilot devices use debug-signed validation builds (clean reinstall required for production transition) or the long-lived signing identity (preferred when testing upgrade behavior).
+- [ ] Verify Android backup settings and release shrink/obfuscation policy.
+- [ ] Test the intended transition/upgrade path on real devices.
 
 ## 9. Pilot limitations to communicate
 
@@ -127,4 +137,6 @@ Before production:
 - PDF receipts/statements depend on compatible Android sharing/printing apps.
 - Notifications are currently in-app rather than a complete push-notification/alerting system.
 - Profit reporting depends on accurate buying-price data.
-- Controlled-pilot technical gates are green, but unrestricted production remains blocked by the unchecked authentication, real-device pilot, backup/restore, monitoring, and signed-release requirements above.
+- Supabase leaked-password screening is unavailable on the current Free plan; strong app-side password rules are only a compensating control.
+- Debug-signed validation APKs are for controlled testing and normally cannot upgrade in place to a differently signed production APK.
+- Controlled-pilot technical gates are strong, but unrestricted production remains blocked by the unchecked real-device pilot, Auth-plan/configuration, restore-drill, monitoring/alerts, and protected signing requirements above.
