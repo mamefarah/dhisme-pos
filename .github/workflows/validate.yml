@@ -23,6 +23,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Validate operational shell scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/backup_supabase.sh
+          bash -n scripts/verify_supabase_backup.sh
+          bash -n scripts/generate_android_upload_key.sh
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
