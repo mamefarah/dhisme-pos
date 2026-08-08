@@ -1,0 +1,27 @@
+name: Verify Stable Android Native Project
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-android-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Verify committed Android project
+        run: |
+          set -euo pipefail
+          test -f android/app/build.gradle.kts
+          test -f android/app/src/main/AndroidManifest.xml
+          test -f android/gradlew
+          test -f android/gradlew.bat
+          test -f android/gradle/wrapper/gradle-wrapper.jar
+          test -f android/gradle/wrapper/gradle-wrapper.properties
+          echo "Committed Android native project and Gradle wrapper are present."

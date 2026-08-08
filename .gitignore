@@ -5,6 +5,7 @@
 .pub-cache/
 .pub/
 build/
+backups/
 android/key.properties
 .env
 .DS_Store

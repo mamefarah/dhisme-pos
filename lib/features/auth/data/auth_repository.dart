@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/password_policy.dart';
 import '../models/app_profile.dart';
 
 class AuthRepository {
@@ -25,19 +26,21 @@ class AuthRepository {
     String? phone,
     String? storePhone,
     String? storeAddress,
-  }) =>
-      sb.auth.signUp(
-        email: email.trim(),
-        password: password,
-        data: {
-          'full_name': fullName.trim(),
-          'store_name': storeName.trim(),
-          if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
-          if (storePhone != null && storePhone.trim().isNotEmpty) 'store_phone': storePhone.trim(),
-          if (storeAddress != null && storeAddress.trim().isNotEmpty) 'store_address': storeAddress.trim(),
-          'signup_type': 'owner',
-        },
-      );
+  }) {
+    _enforcePasswordPolicy(password);
+    return sb.auth.signUp(
+      email: email.trim(),
+      password: password,
+      data: {
+        'full_name': fullName.trim(),
+        'store_name': storeName.trim(),
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        if (storePhone != null && storePhone.trim().isNotEmpty) 'store_phone': storePhone.trim(),
+        if (storeAddress != null && storeAddress.trim().isNotEmpty) 'store_address': storeAddress.trim(),
+        'signup_type': 'owner',
+      },
+    );
+  }
 
   Future<void> registerOwner({
     required String fullName,
@@ -60,17 +63,19 @@ class AuthRepository {
     required String fullName,
     required String inviteCode,
     String? phone,
-  }) =>
-      sb.auth.signUp(
-        email: email.trim(),
-        password: password,
-        data: {
-          'full_name': fullName.trim(),
-          'invite_code': inviteCode.trim().toUpperCase(),
-          if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
-          'signup_type': 'employee',
-        },
-      );
+  }) {
+    _enforcePasswordPolicy(password);
+    return sb.auth.signUp(
+      email: email.trim(),
+      password: password,
+      data: {
+        'full_name': fullName.trim(),
+        'invite_code': inviteCode.trim().toUpperCase(),
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        'signup_type': 'employee',
+      },
+    );
+  }
 
   Future<void> registerWithInvite({
     required String fullName,
@@ -82,4 +87,12 @@ class AuthRepository {
         'p_invite_code': inviteCode,
         'p_phone': phone,
       });
+
+  void _enforcePasswordPolicy(String password) {
+    final issue = PasswordPolicy.validate(password);
+    if (issue == null) return;
+    throw const AuthException(
+      'Password policy requires at least 12 characters with uppercase, lowercase, a number, and a symbol.',
+    );
+  }
 }

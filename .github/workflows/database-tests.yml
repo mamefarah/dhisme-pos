@@ -17,7 +17,7 @@ concurrency:
 jobs:
   database-validation:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
 
     steps:
       - name: Checkout repository
@@ -37,3 +37,19 @@ jobs:
 
       - name: Run database security and RLS tests
         run: supabase test db --local
+
+      - name: Exercise encrypted backup and integrity verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          eval "$(supabase status -o env | grep '^DB_URL=')"
+          test -n "${DB_URL:-}"
+
+          export SUPABASE_DB_URL="$DB_URL"
+          export BACKUP_ENCRYPTION_PASSPHRASE="ci-only-backup-roundtrip-secret"
+          export BACKUP_DIR="$RUNNER_TEMP/dhisme-backup-test"
+
+          bash scripts/backup_supabase.sh
+          BACKUP_FILE="$(find "$BACKUP_DIR" -maxdepth 1 -name '*.tar.gz.enc' -type f | head -n 1)"
+          test -n "$BACKUP_FILE"
+          bash scripts/verify_supabase_backup.sh "$BACKUP_FILE"

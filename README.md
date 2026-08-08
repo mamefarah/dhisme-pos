@@ -41,21 +41,33 @@ Financial mutations are performed through PostgreSQL RPCs. Direct client writes 
 lib/
   core/
   features/
+android/                    # committed native project + Gradle wrapper
 supabase/
   migrations/
+  tests/
   seed.sql
 test/
+scripts/
+  backup_supabase.sh
+  verify_supabase_backup.sh
+  generate_android_upload_key.sh
 docs/
   RELEASE_CHECKLIST.md
   PILOT_TEST_SCRIPT.md
+  CONTROLLED_PILOT_EXECUTION_PLAN.md
+  BACKUP_RESTORE_RUNBOOK.md
+  ANDROID_RELEASE_SIGNING.md
+  OBSERVABILITY_RUNBOOK.md
 .github/workflows/
   validate.yml
+  database-tests.yml
   build-apk.yml
+  production-release.yml
 ```
 
 ## Supabase setup
 
-Use a new development or staging project before production.
+Use a development/staging environment before introducing schema changes to production.
 
 ### Recommended: Supabase CLI
 
@@ -66,16 +78,21 @@ supabase db push
 
 `supabase db push` must apply **all** files under `supabase/migrations/` in filename order. Running only `001_init.sql` is not sufficient for the current application.
 
-After the migrations:
+The repository database CI reconstructs the full migration chain and runs the pgTAP RLS/security suite on an isolated local Supabase/Postgres environment.
 
-1. Review Supabase Database Advisors.
+After migrations:
+
+1. Review Supabase Database/Security Advisors.
 2. Confirm Row Level Security is enabled.
 3. Confirm anonymous users cannot execute protected business RPCs.
 4. Verify authenticated clients cannot directly write customer/supplier aggregate debt balances.
-5. Enable leaked-password protection in Supabase Authentication settings before unrestricted production use.
-6. Create or register the initial owner through the application.
-7. Use store invitations for managers and sellers.
-8. Test backup and restore before using irreplaceable transaction data.
+5. Review the intentional authenticated SECURITY DEFINER RPC allowlist rather than blindly exposing/revoking functions.
+6. Configure the strongest Supabase Auth password protections supported by the selected plan.
+7. Create/register the initial owner through the application.
+8. Use store invitations for managers and sellers.
+9. Create and verify an independent encrypted database backup before relying on irreplaceable transaction data.
+
+The connected project is currently on the Supabase **Free plan**. Supabase leaked-password screening is currently a Pro+ feature, so the app enforces a compensating 12+ character mixed-character password policy at account creation. That client-side rule does **not** replace server-side breached-password screening.
 
 Do not place a Supabase `service_role` key in Flutter, GitHub source, APK build arguments, or user documentation.
 
@@ -117,68 +134,110 @@ The audited transaction API provides:
 - Server-side net revenue and profit reporting
 - Cash closing based on all recorded inflows and outflows assigned to the user
 
-## GitHub quality gate
+## GitHub quality gates
 
-`.github/workflows/validate.yml` runs on pull requests and performs:
+### Flutter quality
+
+`.github/workflows/validate.yml` runs on pull requests and verifies:
 
 ```text
+operational shell script syntax
 flutter pub get
 flutter analyze --fatal-infos
 flutter test --coverage
 ```
 
-Analyzer infos are treated as failures. Diagnostic artifacts are retained only for failed validation runs to reduce Actions storage usage.
+### Database quality
 
-## Android validation build
+`.github/workflows/database-tests.yml`:
 
-`.github/workflows/build-apk.yml` verifies that the app can compile as a release-mode Android APK after analyzer and test checks.
+- reconstructs the committed Supabase migration chain from scratch;
+- runs the 30-test database security/RLS suite;
+- exercises the encrypted logical-backup script against the isolated database;
+- decrypts/verifies that backup to prove archive integrity.
 
-Normal PR and `main` push runs verify compilation without retaining the APK. To obtain a downloadable validation APK, manually run **Build Dukaan Dhisme POS Validation APK** from GitHub Actions.
+### Android validation build
+
+`.github/workflows/build-apk.yml` builds directly from the committed `android/` project.
+
+Normal PR and `main` push runs prove release-mode APK compilation without retaining an artifact. To obtain a downloadable test build, manually run **Build Dukaan Dhisme POS Validation APK**.
 
 Manual artifact name:
 
 ```text
-dukaan-dhisme-pos-unsigned-validation-apk
+dukaan-dhisme-pos-validation-apk
 ```
 
-The manual artifact contains a `BUILD_CHANNEL.txt` warning, is retained briefly, and is **not a signed production release**.
+The artifact is **release mode but debug-signed**, contains `BUILD_CHANNEL.txt` and `SHA256SUMS`, is retained for one day, and is strictly non-production.
 
-A production-distribution workflow must:
+## Production Android release
 
-- Require protected signing credentials
-- Fail when signing credentials are missing
-- Verify the signing certificate
-- Protect the keystore outside the repository
-- Use an incremented version/build number
-- Produce a clearly named signed production APK/AAB
+The native Android project, Gradle wrapper, application ID, compile SDK, target SDK, and signing behavior are now committed and explicit.
+
+Application ID:
+
+```text
+com.dukaandhisme.dhisme_pos
+```
+
+A normal production release task fails closed when protected release-signing credentials are missing. The manual **Produce Signed Android Release** workflow requires protected keystore secrets, builds signed APK+AAB outputs, verifies signatures, rejects the Android Debug certificate, and creates SHA-256 checksums/release metadata.
+
+See `docs/ANDROID_RELEASE_SIGNING.md` before creating or storing the long-lived signing key.
+
+## Backup and recovery
+
+The Free-plan pilot uses independent encrypted logical backups rather than assuming dashboard recovery is available.
+
+Use:
+
+```bash
+bash scripts/backup_supabase.sh
+bash scripts/verify_supabase_backup.sh <encrypted-backup-file>
+```
+
+The backup script exports roles, schema, data, and Supabase migration history, then encrypts the archive using AES-256-CBC/PBKDF2 and creates checksums.
+
+See `docs/BACKUP_RESTORE_RUNBOOK.md`. A real backup and non-production restore drill remain required operational gates.
 
 ## Controlled-pilot validation
 
 Before handing an APK to a pilot store:
 
-1. PR validation and Android compilation are green for the exact release-candidate commit.
-2. A clean staging database is reconstructed from every committed migration.
-3. `docs/PILOT_TEST_SCRIPT.md` is completed, including two-store isolation, aggregate-balance tampering, mixed payments, purchases, supplier/customer allocations, returns, expenses, cash closing, and idempotency tests.
-4. Financial reports are manually reconciled against a controlled sample.
-5. Backup/restore has been tested.
-6. Real Android devices complete lifecycle/connectivity smoke tests.
+1. Exact release-candidate Flutter, database, and Android checks are green.
+2. Choose the pilot signing path: long-lived release identity (preferred for upgrade testing) or disposable debug-signed validation build.
+3. Create and verify an encrypted database backup.
+4. Complete `docs/PILOT_TEST_SCRIPT.md` on real Android devices and roles.
+5. Exercise two-store isolation and role restrictions.
+6. Manually reconcile controlled financial samples.
+7. Complete device lifecycle/connectivity smoke tests.
+8. Follow the daily backup and incident procedures during the pilot.
 
-See `docs/RELEASE_CHECKLIST.md` for the full release gate.
+See `docs/CONTROLLED_PILOT_EXECUTION_PLAN.md` and `docs/RELEASE_CHECKLIST.md`.
 
 ## Current release status
 
-Current app version: **1.1.0+2 controlled-pilot candidate**.
+Current app version: **1.2.0+3 controlled-pilot release-engineering candidate**.
 
-The project has undergone substantial Red Team remediation and production-readiness hardening. Core financial integrity, anonymous RPC exposure, aggregate customer/supplier balance privileges, Flutter SDK deprecations, and CI quality gates are addressed in the current remediation candidate.
+Completed technical gates include:
 
-Unrestricted production deployment still requires:
+- production-readiness code remediation;
+- live aggregate-debt privilege hardening;
+- full migration reconstruction and 30/30 database tests;
+- committed Android native project and Gradle wrapper;
+- explicit validation-vs-production signing separation;
+- fail-closed production signing configuration;
+- protected signed APK/AAB workflow structure;
+- strong account-creation password policy;
+- encrypted backup/verification tooling;
+- controlled-pilot, backup/recovery, signing, and incident runbooks.
 
-- A clean green merge of the validated remediation pull request
-- Fresh staging-database reconstruction from committed migrations
-- Completion of the expanded controlled-pilot test script
-- Leaked-password protection enabled
-- Tested backup/restore procedures
-- A signed production release workflow and store-owned release key
-- Crash/error monitoring and operational alerting
+Unrestricted production still requires operational/account actions that cannot be truthfully marked complete in source code alone:
 
-Until those conditions are met, use only a controlled pilot with reconciliation and backups.
+- real-device completion of the controlled pilot;
+- first verified live encrypted backup and non-production restore drill;
+- production Android keystore creation/custody and GitHub signing secrets;
+- first verified signed APK/AAB;
+- persistent Flutter crash/error monitoring and material backend alerting;
+- Supabase Auth production-hardening decision, including upgrading if leaked-password screening is required.
+
+Until those gates are complete, use controlled-pilot procedures with reconciliation and backups.
