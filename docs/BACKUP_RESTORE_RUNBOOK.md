@@ -6,6 +6,29 @@ This runbook defines the minimum recoverability process for the controlled pilot
 
 The connected Supabase organization is currently on the **Free plan**. Do not treat dashboard backup availability as the application's recovery strategy. Keep independent encrypted logical backups off-site.
 
+## Verified recovery baseline — 08 Aug 2026
+
+The repository now performs an end-to-end encrypted restore drill in isolated Supabase/Postgres CI:
+
+- reconstruct the complete migration chain through migration 032;
+- create a coherent transactional fixture through the real v2 purchase, sale, return, credit/payment, expense, cash-adjustment and cash-closing RPCs;
+- create and encrypt a logical backup;
+- verify all archive checksums;
+- destroy the source database;
+- initialize a clean Supabase target with no application migrations/data;
+- restore schema, Auth/business data and migration history;
+- require an exact source-versus-restored business manifest match;
+- rerun the 30-test security/RLS suite against the restored database;
+- recheck protected financial-balance privileges, RLS, SECURITY DEFINER contracts and internal-helper permissions.
+
+The verified drill completed in **37 seconds** on a GitHub-hosted isolated environment. Treat this as a technical baseline, **not** a guaranteed production outage RTO; a real hosted restore includes provisioning, connection, operator and application-reconfiguration time.
+
+The recovery drill also exposed and corrected three repository/live-schema drift defects:
+
+- migration 030 captures the `new_return_no()` helper required by `record_return_v2()`;
+- migration 031 captures the working `record_expense_v2()` timestamp behavior;
+- migration 032 captures the working `record_cash_adjustment_v2()` timestamp behavior.
+
 ## Pilot backup policy
 
 During the controlled pilot:
@@ -24,10 +47,11 @@ Install:
 
 - Supabase CLI
 - Docker (used by `supabase db dump`)
+- PostgreSQL `psql`
 - OpenSSL
 - `sha256sum`
 
-Obtain a Supabase **Session Pooler** or direct Postgres connection string with the database password. Do not use the public API key as a database connection credential.
+Obtain a Supabase **Session Pooler** or direct Postgres connection string with the database password. Do not use the public API key as a database connection credential, and do not paste the database password into chat, source control, issue comments or documentation.
 
 ## Create a backup
 
@@ -43,7 +67,7 @@ The script creates:
 
 - roles dump;
 - schema dump;
-- data dump;
+- data dump, including Auth/business records handled by the Supabase CLI dump process;
 - Supabase migration-history schema/data;
 - internal SHA-256 checksums;
 - backup metadata;
@@ -104,26 +128,41 @@ Before restoring:
 
 - confirm the target is non-production;
 - confirm Postgres/Supabase versions are compatible;
-- enable any required extensions;
+- enable required extensions;
 - obtain the target database connection string;
-- keep the target application disconnected until validation completes.
+- keep the target application disconnected until validation completes;
+- confirm whether the source has any **custom application Postgres roles**.
 
-### 3. Restore
+The current Dhisme POS project has **no custom application database roles**; its roles are Supabase-managed. A new Supabase project already owns/configures those platform roles. The automated recovery drill therefore preserves `roles.sql` in the encrypted archive for audit/recovery purposes but keeps the target project's managed role attributes rather than transplanting non-portable settings such as platform logging parameters.
 
-Use `psql` with stop-on-error and a single transaction:
+If custom roles are introduced later, stop and define their explicit restore/password procedure before considering recovery validated.
+
+### 3. Reset target default privileges
+
+Before restoring the application schema into a new Supabase target, make explicit table grants from the dump authoritative:
+
+```sql
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+REVOKE ALL ON TABLES FROM anon, authenticated;
+```
+
+### 4. Restore schema and data
+
+For the current project, where all database roles are Supabase-managed:
 
 ```bash
 psql \
   --single-transaction \
   --variable ON_ERROR_STOP=1 \
-  --file roles.sql \
   --file schema.sql \
   --command 'SET session_replication_role = replica' \
   --file data.sql \
   --dbname "$TARGET_DB_URL"
 ```
 
-Then restore migration history if required for CLI parity:
+Do **not** globally disable error handling. If the project's role model changes, review `roles.sql` and Supabase's current restore documentation before restoring custom roles.
+
+Then restore migration history for CLI parity:
 
 ```bash
 psql \
@@ -134,20 +173,21 @@ psql \
   --dbname "$TARGET_DB_URL"
 ```
 
-Supabase-managed roles can differ between environments. If a role/grant statement fails, stop and review the exact statement rather than disabling error handling globally.
-
 ## Restore validation checklist
 
 A restore drill passes only when all of the following are verified:
 
-- key table counts match the source backup expectations;
-- stores, profiles, customers, products, sales, payments, purchases, returns, expenses, and ledgers are present as expected;
+- Auth users required by the restored profiles are present;
+- key table counts and financial state match the source backup expectations;
+- stores, profiles, customers, products, suppliers, purchases, sales, payments, returns, expenses, adjustments, closings and ledgers are present as expected;
 - RLS is enabled on tenant/business tables;
-- migrations 028 and 029 invariants remain intact;
+- migrations 028–032 recovery/security invariants remain intact;
 - `customers.total_balance` and `suppliers.total_balance` remain client-protected;
+- internal `new_return_no()` is not directly executable by API client roles;
 - Owner/Manager/Seller role checks behave correctly;
 - cross-store access is denied;
-- critical SECURITY DEFINER v2 transaction RPCs execute correctly in test transactions;
+- critical SECURITY DEFINER v2 transaction RPCs remain present and functional;
+- migration history is restored;
 - no unexpected restore errors are ignored.
 
 Document the date, backup timestamp, target environment, duration, failures, corrections, and final result.
@@ -157,6 +197,7 @@ Document the date, backup timestamp, target environment, duration, failures, cor
 Until a paid/managed recovery strategy is selected, use these conservative pilot targets:
 
 - **RPO:** no more than one operating day, improved by taking additional backups before risky changes;
-- **RTO:** recovery is manual and must be measured during the first restore drill rather than assumed.
+- **technical restore baseline:** 37 seconds in the verified isolated CI drill on 08 Aug 2026;
+- **operational RTO:** not yet guaranteed. Measure the full hosted process—including project availability, connection, restore and application reconfiguration—during an operator-run hosted recovery exercise before assigning an SLA.
 
-After the drill, replace the RTO estimate with the measured recovery time.
+The first encrypted backup of the **live** project remains a separate operator gate because it requires the live database password on a secure machine. CI recovery validation is not a substitute for retaining current production backups.
