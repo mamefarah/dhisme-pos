@@ -56,10 +56,21 @@ class _AdjustStockScreenState extends State<AdjustStockScreen> {
           child: ListView(padding: const EdgeInsets.all(16), children: [
             Card(child: ListTile(leading: const Icon(Icons.inventory_2_outlined), title: Text(context.tr('Kaydka hadda', 'Current stock')), trailing: Text('${widget.product.currentStock} ${widget.product.unit}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)))),
             const SizedBox(height: 16),
-            Card(child: Padding(padding: const EdgeInsets.all(4), child: Row(children: [
-              Expanded(child: RadioListTile<bool>(value: true, groupValue: _isAdd, title: Text(context.tr('Kayd ku dar', 'Add stock')), onChanged: (v) => setState(() => _isAdd = v!), contentPadding: const EdgeInsets.symmetric(horizontal: 8))),
-              Expanded(child: RadioListTile<bool>(value: false, groupValue: _isAdd, title: Text(context.tr('Kayd ka jar', 'Remove stock')), onChanged: (v) => setState(() => _isAdd = v!), contentPadding: const EdgeInsets.symmetric(horizontal: 8))),
-            ]))),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: RadioGroup<bool>(
+                  groupValue: _isAdd,
+                  onChanged: (value) {
+                    if (value != null) setState(() => _isAdd = value);
+                  },
+                  child: Row(children: [
+                    Expanded(child: RadioListTile<bool>(value: true, title: Text(context.tr('Kayd ku dar', 'Add stock')), contentPadding: const EdgeInsets.symmetric(horizontal: 8))),
+                    Expanded(child: RadioListTile<bool>(value: false, title: Text(context.tr('Kayd ka jar', 'Remove stock')), contentPadding: const EdgeInsets.symmetric(horizontal: 8))),
+                  ]),
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _qty,
