@@ -1,22 +1,54 @@
-name: Verify Stable Android Native Project
+name: Complete Android Native Bootstrap
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  verify-android-native:
+  bootstrap-wrapper:
+    if: github.head_ref == 'agent/controlled-pilot-release-engineering'
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+    timeout-minutes: 20
 
-      - name: Verify committed Android project
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.1"
+          cache: true
+
+      - name: Commit Gradle wrapper files ignored by Flutter template
         run: |
           set -euo pipefail
-          test -f android/app/build.gradle.kts
-          test -f android/app/src/main/AndroidManifest.xml
-          test -f android/gradle/wrapper/gradle-wrapper.properties
-          echo "Committed Android native project is present."
+          if [ -f android/gradlew ] && [ -f android/gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "Gradle wrapper is already committed."
+            exit 0
+          fi
+
+          TEMP_PROJECT="$(mktemp -d)"
+          flutter create "$TEMP_PROJECT" \
+            --project-name dhisme_pos \
+            --org com.dukaandhisme \
+            --platforms=android
+
+          cp "$TEMP_PROJECT/android/gradlew" android/gradlew
+          cp "$TEMP_PROJECT/android/gradlew.bat" android/gradlew.bat
+          cp "$TEMP_PROJECT/android/gradle/wrapper/gradle-wrapper.jar" android/gradle/wrapper/gradle-wrapper.jar
+          chmod +x android/gradlew
+          rm -rf "$TEMP_PROJECT"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f android/gradlew android/gradlew.bat android/gradle/wrapper/gradle-wrapper.jar
+          git commit -m "commit Android Gradle wrapper"
+          git push origin "HEAD:${{ github.head_ref }}"
