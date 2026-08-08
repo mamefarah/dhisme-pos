@@ -24,6 +24,7 @@ jobs:
     timeout-minutes: 45
     env:
       GRADLE_OPTS: -Dorg.gradle.vfs.watch=false
+      ORG_GRADLE_PROJECT_validationBuild: "true"
 
     steps:
       - name: Checkout repository
@@ -41,6 +42,14 @@ jobs:
           flutter-version: "3.44.1"
           cache: true
 
+      - name: Verify committed Android project
+        run: |
+          set -euo pipefail
+          test -f android/app/build.gradle.kts
+          test -f android/app/src/main/AndroidManifest.xml
+          test -f android/gradlew
+          test -f android/gradle/wrapper/gradle-wrapper.jar
+
       - name: Install Android SDK 36
         run: |
           set -euo pipefail
@@ -48,56 +57,11 @@ jobs:
           if [ ! -x "$SDKMANAGER" ]; then
             SDKMANAGER="$(command -v sdkmanager)"
           fi
-          # sdkmanager closes stdin after accepting licenses. Disable pipefail only
-          # for this pipeline so the normal SIGPIPE from `yes` is not a failure;
-          # the pipeline still returns sdkmanager's own exit status.
           set +o pipefail
           yes | "$SDKMANAGER" \
             "platforms;android-36" \
             "build-tools;36.0.0"
           set -o pipefail
-
-      - name: Create Android project files if missing
-        run: |
-          set -euo pipefail
-          if [ ! -d "android" ]; then
-            TEMP_PROJECT="$(mktemp -d)"
-            flutter create "$TEMP_PROJECT" \
-              --project-name dhisme_pos \
-              --org com.dukaandhisme \
-              --platforms=android
-            mv "$TEMP_PROJECT/android" ./android
-            rm -rf "$TEMP_PROJECT"
-          fi
-
-      - name: Configure Android manifest
-        run: |
-          set -euo pipefail
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q "android.permission.INTERNET" "$MANIFEST"; then
-            sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
-          fi
-          if ! grep -q "android.permission.ACCESS_NETWORK_STATE" "$MANIFEST"; then
-            sed -i '/<manifest/a\    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' "$MANIFEST"
-          fi
-          sed -i 's/android:label="[^"]*"/android:label="Dukaan Dhisme POS"/g' "$MANIFEST"
-
-      - name: Configure compileSdk 36
-        run: |
-          set -euo pipefail
-          mkdir -p "$HOME/.gradle/init.d"
-          cat > "$HOME/.gradle/init.d/force-android-compile-sdk.gradle" <<'EOF'
-          gradle.projectsEvaluated {
-              rootProject.allprojects { project ->
-                  def androidExt = project.extensions.findByName("android")
-                  if (androidExt != null) {
-                      try { androidExt.compileSdk = 36 } catch (Throwable ignored) {}
-                      try { androidExt.compileSdkVersion 36 } catch (Throwable ignored) {}
-                  }
-              }
-          }
-          EOF
-          echo "android.suppressUnsupportedCompileSdk=36" >> android/gradle.properties
 
       - name: Get packages
         run: flutter pub get
@@ -113,20 +77,27 @@ jobs:
       - name: Run automated tests
         run: flutter test --coverage
 
-      - name: Build unsigned validation APK
+      - name: Build non-production validation APK
         run: |
+          set -euo pipefail
           flutter build apk --release \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          echo "UNSIGNED VALIDATION BUILD - NOT FOR PRODUCTION DISTRIBUTION" \
-            > build/app/outputs/flutter-apk/BUILD_CHANNEL.txt
+          cat > build/app/outputs/flutter-apk/BUILD_CHANNEL.txt <<'EOF'
+          NON-PRODUCTION VALIDATION BUILD
+          RELEASE MODE / DEBUG SIGNING
+          NOT FOR PRODUCTION DISTRIBUTION
+          EOF
+          sha256sum build/app/outputs/flutter-apk/app-release.apk \
+            > build/app/outputs/flutter-apk/SHA256SUMS
 
       - name: Upload validation artifact
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v6
         with:
-          name: dukaan-dhisme-pos-unsigned-validation-apk
+          name: dukaan-dhisme-pos-validation-apk
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/flutter-apk/BUILD_CHANNEL.txt
+            build/app/outputs/flutter-apk/SHA256SUMS
           retention-days: 1
