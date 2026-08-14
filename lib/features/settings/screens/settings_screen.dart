@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/i18n/app_language.dart';
-import '../../../core/services/supabase_service.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/models/app_profile.dart';
 import '../../employees/screens/employees_screen.dart';
@@ -16,6 +15,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = AuthRepository();
+    final userId = repo.currentUserId ?? '';
     return Scaffold(
       appBar: AppBar(title: Text(context.tr('Dejinta', 'Settings'))),
       body: AnimatedBuilder(
@@ -27,7 +27,7 @@ class SettingsScreen extends StatelessWidget {
               child: ListTile(
                 leading: CircleAvatar(child: Text(profile.fullName.isNotEmpty ? profile.fullName[0].toUpperCase() : '?')),
                 title: Text(profile.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('${_roleLabel(context, profile.role)} • ${profile.phone ?? context.tr('Telefoon ma jiro', 'No phone')}\nID: ${(sb.auth.currentUser?.id ?? '').substring(0, (sb.auth.currentUser?.id ?? '').length.clamp(0, 8))}…'),
+                subtitle: Text('${_roleLabel(context, profile.role)} • ${profile.phone ?? context.tr('Telefoon ma jiro', 'No phone')}\nID: ${userId.substring(0, userId.length.clamp(0, 8))}…'),
               ),
             ),
             const SizedBox(height: 12),

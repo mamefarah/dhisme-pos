@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/services/supabase_service.dart';
 import '../../dashboard/screens/manager_home_screen.dart';
 import '../../dashboard/screens/owner_home_screen.dart';
 import '../../dashboard/screens/seller_home_screen.dart';
@@ -28,7 +27,7 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
-    _authSub = sb.auth.onAuthStateChange.listen(_handleAuthChange);
+    _authSub = _repo.authStateChanges.listen(_handleAuthChange);
     _loadProfile();
   }
 
@@ -55,7 +54,7 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _loadProfile() async {
-    if (sb.auth.currentSession == null) {
+    if (!_repo.hasSession) {
       if (mounted) {
         setState(() {
           _loading = false;
@@ -78,7 +77,7 @@ class _AuthGateState extends State<AuthGate> {
       }
 
       // Profile is null. Check if this user signed up and needs profile creation.
-      final meta = sb.auth.currentUser?.userMetadata;
+      final meta = _repo.currentUserMetadata;
       final signupType = meta?['signup_type'] as String?;
 
       if (signupType == 'owner' || signupType == 'employee') {
@@ -187,7 +186,7 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
-    if (sb.auth.currentSession == null) {
+    if (!_repo.hasSession) {
       return const LoginScreen();
     }
 
@@ -201,7 +200,7 @@ class _AuthGateState extends State<AuthGate> {
 
     if (_profile == null) {
       return _ProfileMissingScreen(
-        userId: sb.auth.currentUser?.id ?? '',
+        userId: _repo.currentUserId ?? '',
         onLogout: _repo.signOut,
       );
     }

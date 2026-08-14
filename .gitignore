@@ -7,6 +7,9 @@
 build/
 backups/
 android/key.properties
+android/local.properties
+*.jks
+*.keystore
 .env
 .DS_Store
 .idea/

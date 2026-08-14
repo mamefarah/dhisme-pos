@@ -21,6 +21,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
   final _repo = ApprovalRepository();
   late Future<List<Map<String, dynamic>>> _future;
   _StatusFilter _filter = _StatusFilter.pending;
+  final Set<String> _busyIds = {};
 
   @override
   void initState() {
@@ -35,22 +36,30 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
   }
 
   Future<void> _approve(String id) async {
+    if (_busyIds.contains(id)) return;
+    setState(() => _busyIds.add(id));
     try {
       await _repo.decide(id, 'approved');
       _reload();
     } catch (e) {
       if (mounted) _showError(friendlyError(e, fallback: context.tr('Iibkan lama ansixin karin. Fadlan mar kale isku day.', 'Could not approve this sale. Please try again.')));
+    } finally {
+      if (mounted) setState(() => _busyIds.remove(id));
     }
   }
 
   Future<void> _reject(String id) async {
+    if (_busyIds.contains(id)) return;
     final comment = await _showRejectDialog();
     if (comment == null || !mounted) return;
+    setState(() => _busyIds.add(id));
     try {
       await _repo.decide(id, 'rejected', comment: comment.trim().isEmpty ? null : comment.trim());
       _reload();
     } catch (e) {
       if (mounted) _showError(friendlyError(e, fallback: context.tr('Iibkan lama diidi karin. Fadlan mar kale isku day.', 'Could not reject this sale. Please try again.')));
+    } finally {
+      if (mounted) setState(() => _busyIds.remove(id));
     }
   }
 
@@ -137,7 +146,12 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                   child: ListView.builder(
                     padding: const EdgeInsets.all(12),
                     itemCount: rows.length,
-                    itemBuilder: (context, i) => _ApprovalCard(data: rows[i], onApprove: () => _approve(rows[i]['id'] as String), onReject: () => _reject(rows[i]['id'] as String)),
+                    itemBuilder: (context, i) => _ApprovalCard(
+                      data: rows[i],
+                      busy: _busyIds.contains(rows[i]['id'] as String),
+                      onApprove: () => _approve(rows[i]['id'] as String),
+                      onReject: () => _reject(rows[i]['id'] as String),
+                    ),
                   ),
                 );
               },
@@ -150,8 +164,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
 }
 
 class _ApprovalCard extends StatelessWidget {
-  const _ApprovalCard({required this.data, required this.onApprove, required this.onReject});
+  const _ApprovalCard({required this.data, required this.busy, required this.onApprove, required this.onReject});
   final Map<String, dynamic> data;
+  final bool busy;
   final VoidCallback onApprove;
   final VoidCallback onReject;
 
@@ -281,9 +296,18 @@ class _ApprovalCard extends StatelessWidget {
           if (_status == 'pending') ...[
             const SizedBox(height: 12),
             Row(children: [
-              Expanded(child: FilledButton.icon(onPressed: onApprove, icon: const Icon(Icons.check, size: 18), label: Text(context.tr('Ansixi', 'Approve')))),
+              Expanded(child: FilledButton.icon(
+                onPressed: busy ? null : onApprove,
+                icon: busy ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check, size: 18),
+                label: Text(context.tr('Ansixi', 'Approve')),
+              )),
               const SizedBox(width: 8),
-              Expanded(child: OutlinedButton.icon(onPressed: onReject, icon: const Icon(Icons.close, size: 18), label: Text(context.tr('Diid', 'Reject')), style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700))),
+              Expanded(child: OutlinedButton.icon(
+                onPressed: busy ? null : onReject,
+                icon: const Icon(Icons.close, size: 18),
+                label: Text(context.tr('Diid', 'Reject')),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700),
+              )),
             ]),
           ],
         ]),

@@ -21,17 +21,22 @@ class _OwnerCashClosingsScreenState extends State<OwnerCashClosingsScreen> {
   final _repo = CashClosingRepository();
   late Future<List<Map<String, dynamic>>> _future;
   _StatusFilter _filter = _StatusFilter.submitted;
+  final Set<String> _busyIds = {};
 
   @override
   void initState() { super.initState(); _reload(); }
   void _reload() => setState(() => _future = _repo.listClosings(status: _filter == _StatusFilter.all ? null : _filter.name));
 
   Future<void> _review(String id, String status) async {
+    if (_busyIds.contains(id)) return;
+    setState(() => _busyIds.add(id));
     try { await _repo.review(id, status); _reload(); }
     catch (e) { if (mounted) { ScaffoldMessenger.of(context)..clearSnackBars()..showSnackBar(SnackBar(content: Text(friendlyError(e, fallback: context.tr('Go’aankan lama fulin karin. Fadlan mar kale isku day.', 'Could not process this decision. Please try again.'))), backgroundColor: Theme.of(context).colorScheme.error, behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 5))); } }
+    finally { if (mounted) setState(() => _busyIds.remove(id)); }
   }
 
   Future<void> _confirmAndReview(String id, String status) async {
+    if (_busyIds.contains(id)) return;
     final isApprove = status == 'approved';
     final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
       title: Text(isApprove ? context.tr('Ansixi xiritaanka?', 'Approve closing?') : context.tr('Diid xiritaanka?', 'Reject closing?')),
@@ -62,7 +67,7 @@ class _OwnerCashClosingsScreenState extends State<OwnerCashClosingsScreen> {
               if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
               final rows = snapshot.data!;
               if (rows.isEmpty) return EmptyState(message: _filter == _StatusFilter.submitted ? context.tr('Xiritaan sugaya dib-u-eegis ma jiro.', 'No submissions waiting for review.') : context.tr('Xiritaan lacag lama helin.', 'No cash closings found.'));
-              return RefreshIndicator(onRefresh: () async => _reload(), child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: rows.length, itemBuilder: (context, i) => _ClosingCard(data: rows[i], onApprove: () => _confirmAndReview(rows[i]['id'] as String, 'approved'), onReject: () => _confirmAndReview(rows[i]['id'] as String, 'rejected'))));
+              return RefreshIndicator(onRefresh: () async => _reload(), child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: rows.length, itemBuilder: (context, i) => _ClosingCard(data: rows[i], busy: _busyIds.contains(rows[i]['id'] as String), onApprove: () => _confirmAndReview(rows[i]['id'] as String, 'approved'), onReject: () => _confirmAndReview(rows[i]['id'] as String, 'rejected'))));
             },
           )),
         ]),
@@ -72,8 +77,9 @@ class _OwnerCashClosingsScreenState extends State<OwnerCashClosingsScreen> {
 }
 
 class _ClosingCard extends StatelessWidget {
-  const _ClosingCard({required this.data, required this.onApprove, required this.onReject});
+  const _ClosingCard({required this.data, required this.busy, required this.onApprove, required this.onReject});
   final Map<String, dynamic> data;
+  final bool busy;
   final VoidCallback onApprove;
   final VoidCallback onReject;
 
@@ -111,7 +117,20 @@ class _ClosingCard extends StatelessWidget {
         Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7), decoration: BoxDecoration(color: diffColor.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: diffColor.withValues(alpha: 0.25))), child: Row(children: [Expanded(child: Text(context.tr('Farqi', 'Difference'), style: TextStyle(fontWeight: FontWeight.w600, color: diffColor))), Text(diffLabel, style: TextStyle(fontWeight: FontWeight.bold, color: diffColor))])),
         if (_bank > 0 || _mobile > 0 || _credit > 0) ...[const SizedBox(height: 10), const Divider(height: 1), const SizedBox(height: 8), if (_bank > 0) _Row(label: context.tr('Bangiga', 'Bank transfers'), value: money(_bank)), if (_mobile > 0) _Row(label: 'Mobile Money', value: money(_mobile)), if (_credit > 0) _Row(label: context.tr('Iib deyn ah', 'Credit sales'), value: money(_credit))],
         if (_notes != null && _notes!.isNotEmpty) ...[const SizedBox(height: 10), Text('${context.tr('Qoraal', 'Notes')}: $_notes', style: const TextStyle(fontSize: 12, color: Colors.black54))],
-        if (_status == 'submitted') ...[const SizedBox(height: 12), Row(children: [Expanded(child: FilledButton.icon(onPressed: onApprove, icon: const Icon(Icons.check, size: 18), label: Text(context.tr('Ansixi', 'Approve')))), const SizedBox(width: 8), Expanded(child: OutlinedButton.icon(onPressed: onReject, icon: const Icon(Icons.close, size: 18), label: Text(context.tr('Diid', 'Reject')), style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700)))])],
+        if (_status == 'submitted') ...[const SizedBox(height: 12), Row(children: [
+          Expanded(child: FilledButton.icon(
+            onPressed: busy ? null : onApprove,
+            icon: busy ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check, size: 18),
+            label: Text(context.tr('Ansixi', 'Approve')),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: OutlinedButton.icon(
+            onPressed: busy ? null : onReject,
+            icon: const Icon(Icons.close, size: 18),
+            label: Text(context.tr('Diid', 'Reject')),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700),
+          )),
+        ])],
       ])),
     );
   }
