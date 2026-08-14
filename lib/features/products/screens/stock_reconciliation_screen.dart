@@ -60,21 +60,37 @@ class _StockReconciliationScreenState extends State<StockReconciliationScreen> {
     ));
     if (ok != true || !mounted) return;
     setState(() => _submitting = true);
-    var done = 0;
-    try {
-      for (final c in changes) {
+    var succeeded = 0;
+    final failedNames = <String>[];
+    // Each item is its own RPC call, so a mid-list failure must not be
+    // reported as if nothing happened: items that already succeeded keep
+    // their adjustment and have their field cleared, so re-submitting only
+    // retries the ones that actually failed.
+    for (final c in changes) {
+      try {
         await _repo.adjustStock(productId: c.product.id, quantityChange: c.delta, reason: 'Stock count correction');
-        done++;
+        succeeded++;
+        _controllers[c.product.id]?.clear();
+      } catch (e) {
+        failedNames.add(c.product.name);
       }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)..clearSnackBars()..showSnackBar(SnackBar(content: Text(context.tr('$done alaab ayaa la saxay.', '$done item(s) adjusted.')), behavior: SnackBarBehavior.floating));
-      for (final c in _controllers.values) { c.clear(); }
-      _load();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context)..clearSnackBars()..showSnackBar(SnackBar(content: Text(friendlyError(e, fallback: context.tr('Tirinta kaydka lama gudbin karin.', 'Could not submit stock count.'))), backgroundColor: Theme.of(context).colorScheme.error, behavior: SnackBarBehavior.floating));
-    } finally {
-      if (mounted) setState(() => _submitting = false);
     }
+    if (!mounted) return;
+    _load();
+    if (failedNames.isEmpty) {
+      ScaffoldMessenger.of(context)..clearSnackBars()..showSnackBar(SnackBar(content: Text(context.tr('$succeeded alaab ayaa la saxay.', '$succeeded item(s) adjusted.')), behavior: SnackBarBehavior.floating));
+    } else {
+      ScaffoldMessenger.of(context)..clearSnackBars()..showSnackBar(SnackBar(
+        content: Text(context.tr(
+          '$succeeded ayaa la saxay, ${failedNames.length} way fashilantay: ${failedNames.join(', ')}. Fadlan mar kale isku day kuwaas.',
+          '$succeeded adjusted, ${failedNames.length} failed: ${failedNames.join(', ')}. Fix and submit again for those.',
+        )),
+        backgroundColor: Theme.of(context).colorScheme.error,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+      ));
+    }
+    setState(() => _submitting = false);
   }
 
   String _fmt(double v) => v == v.truncateToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);

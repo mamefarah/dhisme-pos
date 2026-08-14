@@ -5,6 +5,11 @@ import '../../../core/utils/password_policy.dart';
 import '../models/app_profile.dart';
 
 class AuthRepository {
+  Stream<AuthState> get authStateChanges => sb.auth.onAuthStateChange;
+  bool get hasSession => sb.auth.currentSession != null;
+  String? get currentUserId => sb.auth.currentUser?.id;
+  Map<String, dynamic>? get currentUserMetadata => sb.auth.currentUser?.userMetadata;
+
   Future<void> signIn(String email, String password) async {
     await sb.auth.signInWithPassword(email: email.trim(), password: password);
   }
