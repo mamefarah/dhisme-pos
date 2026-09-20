@@ -1,6 +1,6 @@
 begin;
 
-select plan(18);
+select plan(23);
 
 -- Isolated fixture data. The entire pgTAP file is rolled back by the test run.
 insert into public.stores (id, name, currency)
@@ -11,14 +11,16 @@ insert into auth.users (id, email, raw_user_meta_data)
 values
   ('33333333-1111-4111-8111-111111111111', 'pr38-owner@example.test', '{}'::jsonb),
   ('33333333-2222-4222-8222-222222222222', 'pr38-seller-a@example.test', '{}'::jsonb),
-  ('33333333-3333-4333-8333-333333333333', 'pr38-seller-b@example.test', '{}'::jsonb)
+  ('33333333-3333-4333-8333-333333333333', 'pr38-seller-b@example.test', '{}'::jsonb),
+  ('33333333-4444-4444-8444-444444444444', 'pr38-manager@example.test', '{}'::jsonb)
 on conflict (id) do nothing;
 
 insert into public.profiles (id, store_id, full_name, role)
 values
   ('33333333-1111-4111-8111-111111111111', '30000000-0000-0000-0000-000000000001', 'PR38 Owner', 'owner'),
   ('33333333-2222-4222-8222-222222222222', '30000000-0000-0000-0000-000000000001', 'PR38 Seller A', 'seller'),
-  ('33333333-3333-4333-8333-333333333333', '30000000-0000-0000-0000-000000000001', 'PR38 Seller B', 'seller')
+  ('33333333-3333-4333-8333-333333333333', '30000000-0000-0000-0000-000000000001', 'PR38 Seller B', 'seller'),
+  ('33333333-4444-4444-8444-444444444444', '30000000-0000-0000-0000-000000000001', 'PR38 Manager', 'manager')
 on conflict (id) do nothing;
 
 insert into public.products (
@@ -116,12 +118,11 @@ select throws_ok(
 reset role;
 
 -- ─── Owner: retains store-wide visibility across all five tables ────────────
--- Note: production's profiles_role_check also allows 'manager' (confirmed live
--- on 2026-09-20), but no committed migration adds 'manager' to the local
--- constraint (001_init.sql:24 only allows 'owner'/'seller'), so a 'manager'
--- profile cannot be created against this locally-rebuilt schema yet. Owner is
--- used here to exercise the same `current_user_role() IN ('owner','manager')`
--- branch; add a 'manager' fixture once that drift-capture migration lands.
+-- 'manager' is added to profiles_role_check by
+-- 20260614120000_phase3_employee_management.sql and never reverted, so it is
+-- valid on both the locally-rebuilt schema and production. Owner is checked
+-- here; the manager branch of the same `current_user_role() IN
+-- ('owner','manager')` check is verified separately below.
 select set_config('request.jwt.claim.sub', '33333333-1111-4111-8111-111111111111', true);
 set local role authenticated;
 
@@ -161,6 +162,38 @@ select results_eq(
   $$select current_stock from public.products where id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'$$,
   ARRAY[25::numeric],
   'adjust_stock by owner updates product current_stock'
+);
+
+reset role;
+
+-- ─── Manager: retains store-wide visibility across all five tables ──────────
+select set_config('request.jwt.claim.sub', '33333333-4444-4444-8444-444444444444', true);
+set local role authenticated;
+
+select results_eq(
+  $$select count(*) from public.payments where store_id = '30000000-0000-0000-0000-000000000001'$$,
+  ARRAY[2::bigint],
+  'manager retains store-wide visibility on payments'
+);
+select results_eq(
+  $$select count(*) from public.stock_movements where product_id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'$$,
+  ARRAY[2::bigint],
+  'manager retains store-wide visibility on stock_movements'
+);
+select results_eq(
+  $$select count(*) from public.approval_requests where store_id = '30000000-0000-0000-0000-000000000001'$$,
+  ARRAY[2::bigint],
+  'manager retains store-wide visibility on approval_requests'
+);
+select results_eq(
+  $$select count(*) from public.daily_cash_closings where store_id = '30000000-0000-0000-0000-000000000001'$$,
+  ARRAY[2::bigint],
+  'manager retains store-wide visibility on daily_cash_closings'
+);
+select results_eq(
+  $$select count(*) from public.customer_payments where store_id = '30000000-0000-0000-0000-000000000001'$$,
+  ARRAY[2::bigint],
+  'manager retains store-wide visibility on customer_payments'
 );
 
 reset role;
