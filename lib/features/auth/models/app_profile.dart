@@ -19,6 +19,12 @@ class AppProfile {
   bool get isManager => role == 'manager';
   bool get isSeller => role == 'seller';
 
+  bool get canEditStoreSettings => isOwner;
+  bool get canManageEmployees => isOwner;
+  bool get canDecideApprovals => isOwner;
+  bool get canReviewCashClosings => isOwner;
+  bool get canViewReports => isOwner || isManager;
+
   factory AppProfile.fromMap(Map<String, dynamic> map) {
     return AppProfile(
       id: map['id'] as String,
