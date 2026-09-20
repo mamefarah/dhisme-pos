@@ -41,7 +41,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            if (profile.isOwner || profile.isManager) ...[
+            if (profile.canEditStoreSettings) ...[
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.storefront_outlined),
@@ -52,6 +52,8 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+            ],
+            if (profile.isOwner || profile.isManager) ...[
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.money_off_outlined),
@@ -73,7 +75,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
             ],
-            if (profile.isOwner) ...[
+            if (profile.canViewReports) ...[
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.bar_chart_outlined),
@@ -84,6 +86,8 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+            ],
+            if (profile.canManageEmployees) ...[
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.group_outlined),

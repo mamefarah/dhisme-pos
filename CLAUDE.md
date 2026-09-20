@@ -35,12 +35,24 @@ Before touching any table, column, index, RLS policy, function, or trigger:
 
 ## 3. GitHub Actions — Keep the APK Build Working
 
-- The workflow file is `.github/workflows/build-apk.yml`.
-- It builds a debug APK on push to `main`/`master` and on `workflow_dispatch`.
-- It uses `flutter build apk --debug --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...`.
+There are two separate Android workflows. Do not conflate them.
+
+### `.github/workflows/build-apk.yml` — validation build
+- Runs on push to `main`/`master` and on `workflow_dispatch`.
+- Runs `flutter analyze --fatal-infos` and `flutter test --coverage` before building — the build fails if either fails.
+- Builds with `flutter build apk --release --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...`. This is a **release-mode build with debug signing** (the default Flutter debug keystore), not a `--debug` build — it exists to validate that the app builds and runs, not to distribute a production release.
+- Writes `BUILD_CHANNEL.txt` (`NON-PRODUCTION VALIDATION BUILD / RELEASE MODE / DEBUG SIGNING / NOT FOR PRODUCTION DISTRIBUTION`) and a `SHA256SUMS` file alongside the APK.
+- The artifact (`dukaan-dhisme-pos-validation-apk`, containing `app-release.apk`, `BUILD_CHANNEL.txt`, `SHA256SUMS`) is uploaded **only when the run was triggered by `workflow_dispatch`** — a plain push to `main` still analyzes/tests/builds but does not upload anything. Retention is 1 day.
 - Never remove the `--dart-define` flags, rename the secrets, or change the artifact upload step without testing the full build first.
 - The app icon is generated via `dart run flutter_launcher_icons` from `assets/icon/app_icon.png`. Keep this step in the workflow.
 - If you change `pubspec.yaml` (add/remove packages), verify `flutter pub get` still resolves cleanly.
+
+### `.github/workflows/production-release.yml` — signed production release
+- Manual `workflow_dispatch` only — never runs on push.
+- Requires protected repository secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` (plus `SUPABASE_URL`/`SUPABASE_ANON_KEY`), and fails fast if any are missing.
+- Builds a signed production **AAB** (`flutter build appbundle --release`) and **APK** (`flutter build apk --release`), then verifies the AAB/APK are actually signed with the protected release key (`jarsigner`/`apksigner`) and explicitly fails if the APK carries the Android debug certificate.
+- Uploads `dukaan-dhisme-pos-signed-production-release` (AAB, APK, `RELEASE_METADATA.txt`, `SHA256SUMS`), retention 1 day.
+- Only trigger this workflow for an actual production release, with explicit authorization — never as a way to "test" a build. Use `build-apk.yml` for validation.
 
 ---
 
@@ -106,7 +118,8 @@ For any UI change, perform a manual Impeccable-style review covering:
 ### Auth flow
 - Supabase Auth (email + password). No OAuth, no magic link, unless explicitly requested.
 - `AuthGate` listens to `onAuthStateChange` and routes to `OwnerHomeScreen`, `ManagerHomeScreen`, or `SellerHomeScreen` based on `profile.role`.
-- Managers and sellers join via the owner-generated invite-code flow (`create_store_invite`/`register_with_invite` RPCs, `lib/features/employees/`), not manual Dashboard creation.
+- Managers and sellers join via the owner-generated invite-code flow (`create_store_invite`/`register_with_invite` RPCs, `lib/features/employees/`), not manual Dashboard creation. **`create_store_invite` is owner-only to call, full stop** — managers cannot invite anyone, of any role. This is the normal onboarding path for every manager/seller account.
+- A manually SQL-provisioned `profiles` row (no invite, no self-registration) is an **explicit administrative exception**, used only for a specifically authorized, permanent internal test account — never the normal lifecycle, and never done via `auth.users` SQL inserts (Supabase Auth still creates the login; only the matching `profiles` row may be inserted this way, guarded by explicit precondition checks and only after explicit approval).
 
 ### Profiles table
 - Every authenticated user must have exactly one row in `profiles` (`id` matches `auth.users.id`).
@@ -115,9 +128,11 @@ For any UI change, perform a manual Impeccable-style review covering:
 
 ### RLS
 - All tables must have RLS enabled with policies scoped to `store_id`.
-- Owners can read/write everything in their store.
-- Managers have near-owner-level access: store-wide read on financial/operational tables, insert/update on products/categories/suppliers, update on customers, and most v2 RPCs — but cannot decide approval requests, review cash closings, or issue invites (owner-only).
-- Sellers can read products, customers; create sales and cash closings; cannot approve or see other sellers' data.
+- **Owner**: full read/write in their store, including store identity (`stores.name`/`phone`/`address` — owner-only `UPDATE` policy on `stores`), employee/invite administration (`create_store_invite`), approval decisions (`decide_approval_request`), and cash-closing review (`review_daily_cash_closing`).
+- **Manager**: near-owner operational access — store-wide read on financial/operational tables, insert/update on products/categories/suppliers, update on customers, purchases, expenses, stock adjustments/reconciliation, and the owner/manager-gated reporting RPCs (`sales_summary_v2`, `profit_summary_v2`, `financial_summary_v2`, `top_products_v2`). Managers **cannot** change store identity (no `stores` UPDATE policy for manager — enforced at the database, not just hidden in the UI), decide approval requests, review cash closings, or issue invites — all four are owner-only both in the backend and in the UI.
+- **Seller**: read products/customers, create sales and cash closings, request credit sales (goes to owner approval); cannot see other sellers' data, cannot access the reporting RPCs above (owner/manager only), cannot approve or review anything.
+- `create_cash_sale_v2` and `request_credit_sale_v2` are **not role-agnostic** — they explicitly permit `owner`/`manager`/`seller` but enforce role-specific discount ceilings inside the function body (seller ≤2%, manager ≤5%; no cap enforced for owner). Don't describe these as open to any role without qualification.
+- Products have no `DELETE` path for any normal application role (owner, manager, or seller) — RLS and grants only cover `SELECT`/`INSERT`/`UPDATE`, and `current_stock` is excluded from the UPDATE column grant so it can only change via `adjust_stock`/`create_cash_sale_v2`/`record_return` (see the domain table below). This says nothing about database/service-role administrative capability, which is outside RLS entirely.
 - When adding a new table, always state the RLS policies and include them in the migration.
 
 ---
@@ -128,13 +143,14 @@ Each area below is sensitive. When implementing changes here, reason through the
 
 | Area | Key considerations |
 |---|---|
-| **Inventory / Products** | Stock levels change on sale. `create_cash_sale` RPC must decrement stock atomically. Never update stock outside an RPC without approval. |
-| **Suppliers & Purchases** | Not yet implemented. If added, purchases must increment stock via RPC. |
-| **Sales (POS)** | Cash, bank, mobile money = immediate. Credit = approval request. Payment method affects daily cash closing reconciliation. |
+| **Inventory / Products** | Stock levels change on sale. `create_cash_sale_v2` RPC must decrement stock atomically. Never update stock outside an RPC without approval. No role (including owner) has a product `DELETE` path — only `SELECT`/`INSERT`/`UPDATE` are granted, and `current_stock` is excluded from the UPDATE grant. |
+| **Suppliers & Purchases** | Implemented (`lib/features/suppliers/`, `lib/features/purchases/`), manager-accessible in both UI and RLS. Purchases increment stock via RPC, consistent with the rest of the stock-mutation model. |
+| **Sales (POS)** | Cash, bank, mobile money = immediate (`create_cash_sale_v2`). Credit = approval request (`request_credit_sale_v2`). Payment method affects daily cash closing reconciliation. Owner/manager/seller can all create sales, but discount % is capped per role inside the RPC (seller ≤2%, manager ≤5%). |
 | **Customer Debt** | `total_balance` on `customers` is derived from credit sales minus payments. Never modify it directly — use RPCs. |
-| **Approvals** | Owner-only. `decide_approval_request` RPC. Status: pending → approved / rejected. No going back once decided. |
-| **Cash Closing** | Seller submits actual cash → owner reviews. `submit_daily_cash_closing` and `review_daily_cash_closing` RPCs. One closing per seller per day. |
-| **Reports / Dashboard** | `dashboard_stats` RPC returns aggregated figures. If schema changes, update the RPC to match. |
+| **Approvals** | Owner-only, both backend and UI. `decide_approval_request` RPC checks role before it even looks up the request. Status: pending → approved / rejected. No going back once decided. |
+| **Cash Closing** | Seller/manager/owner submits actual cash (`submit_daily_cash_closing_v2`) → owner reviews (`review_daily_cash_closing`, owner-only). One closing per seller per day. |
+| **Store Settings** | Store identity (name/phone/address) is owner-only: `stores` has an explicit owner-scoped `UPDATE` RLS policy (migration `037_owner_store_settings_update_policy`), and the Store Settings screen is hidden from manager/seller in the UI. `StoreRepository.updateStore()` treats a zero-row update result as a failure, not a success. |
+| **Reports / Dashboard** | `dashboard_stats_v2` (via `dashboard_stats`) returns aggregated figures, scoped to "own" for sellers and "store" for owner/manager. `sales_summary_v2`, `profit_summary_v2`, `financial_summary_v2`, `top_products_v2` are owner/manager only (sellers denied) and are exposed to manager in the Settings → Sales Reports UI. If schema changes, update the RPCs to match. |
 
 ---
 
