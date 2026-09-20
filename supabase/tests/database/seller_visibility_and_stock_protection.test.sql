@@ -177,8 +177,8 @@ select results_eq(
 );
 select results_eq(
   $$select count(*) from public.stock_movements where product_id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'$$,
-  ARRAY[2::bigint],
-  'manager retains store-wide visibility on stock_movements'
+  ARRAY[3::bigint],
+  'manager retains store-wide visibility on stock_movements (3: 2 fixture rows + 1 from owner''s adjust_stock above)'
 );
 select results_eq(
   $$select count(*) from public.approval_requests where store_id = '30000000-0000-0000-0000-000000000001'$$,
