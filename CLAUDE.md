@@ -56,7 +56,7 @@ lib/
     widgets/        # shared reusable widgets
   features/
     auth/           # models, data, screens
-    dashboard/      # owner/seller home screens + stats
+    dashboard/      # owner/manager/seller home screens + stats
     products/       # inventory CRUD
     customers/      # customer + debt management
     sales/          # POS screen, receipt
@@ -105,17 +105,18 @@ For any UI change, perform a manual Impeccable-style review covering:
 
 ### Auth flow
 - Supabase Auth (email + password). No OAuth, no magic link, unless explicitly requested.
-- `AuthGate` listens to `onAuthStateChange` and routes to `OwnerHomeScreen` or `SellerHomeScreen` based on `profile.role`.
-- Sellers are created by the store owner in the Supabase Dashboard (Auth → Users), then given a `profiles` row with `role = 'seller'`.
+- `AuthGate` listens to `onAuthStateChange` and routes to `OwnerHomeScreen`, `ManagerHomeScreen`, or `SellerHomeScreen` based on `profile.role`.
+- Managers and sellers join via the owner-generated invite-code flow (`create_store_invite`/`register_with_invite` RPCs, `lib/features/employees/`), not manual Dashboard creation.
 
 ### Profiles table
 - Every authenticated user must have exactly one row in `profiles` (`id` matches `auth.users.id`).
-- Fields: `id`, `store_id`, `full_name`, `role` (`owner` | `seller`), `phone`.
+- Fields: `id`, `store_id`, `full_name`, `role` (`owner` | `manager` | `seller`), `phone`.
 - Missing profile → show `_ProfileMissingScreen` with the user's UUID so the owner can fix it.
 
 ### RLS
 - All tables must have RLS enabled with policies scoped to `store_id`.
 - Owners can read/write everything in their store.
+- Managers have near-owner-level access: store-wide read on financial/operational tables, insert/update on products/categories/suppliers, update on customers, and most v2 RPCs — but cannot decide approval requests, review cash closings, or issue invites (owner-only).
 - Sellers can read products, customers; create sales and cash closings; cannot approve or see other sellers' data.
 - When adding a new table, always state the RLS policies and include them in the migration.
 
