@@ -130,9 +130,17 @@ done
 # are introduced later, the source check above makes this drill fail closed.
 #
 # Supabase CLI also documents resetting target default table privileges before
-# schema restore so the dump's explicit privileges remain authoritative.
+# schema restore so the dump's explicit privileges remain authoritative. A
+# fresh Supabase target also grants EXECUTE on public-schema functions to
+# anon/authenticated by default (so PostgREST RPC exposure works out of the
+# box); reset that too, so an internal helper like new_return_no() — which
+# migration 030 deliberately never (re-)grants — stays locked down after
+# restore instead of silently inheriting the platform default. Every RPC
+# meant to be callable replays its own explicit grant from the schema dump,
+# so this only affects functions with no explicit grant.
 psql "$TARGET_DB_URL" --variable ON_ERROR_STOP=1 <<'SQL'
 alter default privileges in schema public revoke all on tables from anon, authenticated;
+alter default privileges in schema public revoke execute on functions from anon, authenticated;
 SQL
 
 psql "$TARGET_DB_URL" \
