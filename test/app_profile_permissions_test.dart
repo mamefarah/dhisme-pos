@@ -40,4 +40,27 @@ void main() {
       expect(seller.canViewReports, isFalse, reason: 'Seller Settings must not expose owner/manager administrative or reporting items');
     });
   });
+
+  group('AppProfile role flags (drive AuthGate routing to Owner/Manager/SellerHomeScreen)', () {
+    test('owner role routes to OwnerHomeScreen', () {
+      final owner = _profile('owner');
+      expect(owner.isOwner, isTrue);
+      expect(owner.isManager, isFalse);
+      expect(owner.isSeller, isFalse);
+    });
+
+    test('manager role routes to ManagerHomeScreen', () {
+      final manager = _profile('manager');
+      expect(manager.isOwner, isFalse);
+      expect(manager.isManager, isTrue);
+      expect(manager.isSeller, isFalse);
+    });
+
+    test('seller role routes to SellerHomeScreen', () {
+      final seller = _profile('seller');
+      expect(seller.isOwner, isFalse);
+      expect(seller.isManager, isFalse);
+      expect(seller.isSeller, isTrue);
+    });
+  });
 }
