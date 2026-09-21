@@ -21,6 +21,16 @@ The following repository/database gates have been completed and independently re
 
 The remaining unchecked items are operational/pilot/account-configuration gates, not hidden code-completion claims.
 
+## Security/build close-out — 21 Sep 2026
+
+- [x] Migrations through **038** are live on the connected Supabase project and the project is `ACTIVE_HEALTHY`.
+- [x] Android client-build workflows reject `sb_secret_` and non-`anon` legacy JWT credentials before compilation.
+- [x] Validation workflow **#197, attempt 2** passed on commit `8e2f53191703085027e64f4cc2d08ac066c95afc`.
+- [x] The retained validation artifact was inspected: its APK checksum matched `SHA256SUMS`, no full `sb_secret_` credential was present, and the embedded Supabase client credential matched the active publishable-key class.
+- [x] Previously exposed validation artifacts identified during the incident response were removed.
+- [x] Leaked-password protection is recorded as an **accepted Free-plan limitation** for the controlled pilot. Revisit it if the Supabase organization moves to Pro or above.
+- [x] Permanent production `Test Manager - Dhisme` onboarding is **deferred by operator decision**. No fake production transactions were created; the existing manager invite remains unused until it expires or is replaced.
+
 ---
 
 ## 1. Database reconstruction and migrations
@@ -48,7 +58,7 @@ Use the committed migration history as the source of truth. Do **not** apply onl
 - [x] Internal `new_return_no()` has no direct EXECUTE privilege for `anon` or `authenticated`.
 - [x] Account creation has an app-side compensating password policy: 12+ characters including uppercase, lowercase, number, and symbol.
 - [ ] Configure the Supabase Auth server-side minimum password length and required character classes to match the app policy.
-- [ ] Enable leaked-password protection before unrestricted production use if required. **Blocked on the current Supabase Free plan; Supabase currently exposes this feature on Pro and above.**
+- [ ] Enable leaked-password protection when the Supabase plan supports it. **Accepted limitation for the current controlled pilot on the Free plan; revisit after upgrading to Pro or above.**
 - [ ] Confirm Authentication email/redirect settings match the intended pilot onboarding flow.
 - [ ] Maintain an explicit reviewed allowlist of authenticated SECURITY DEFINER RPCs. These RPCs are intentionally used as the server-side transaction boundary; do not blindly revoke them based only on the generic advisor warning.
 
@@ -70,13 +80,15 @@ For every release candidate:
 
 The normal PR/push workflow verifies compilation but does not retain an APK. To obtain an installable validation APK, manually run **Build Dukaan Dhisme POS Validation APK** with `workflow_dispatch`.
 
-- [ ] Manual APK workflow run succeeds on the final pilot candidate.
-- [ ] Artifact `dukaan-dhisme-pos-validation-apk` is available.
-- [ ] `BUILD_CHANNEL.txt` confirms **release mode / debug signing / non-production**.
+- [x] Manual APK workflow run succeeds on the final pilot candidate — workflow **#197, attempt 2** on `8e2f53191703085027e64f4cc2d08ac066c95afc`.
+- [x] Artifact `dukaan-dhisme-pos-validation-apk` is available and its archive digest was recorded.
+- [x] `BUILD_CHANNEL.txt` confirms **release mode / debug signing / non-production**; APK checksum matches `SHA256SUMS` and inspection found no embedded `sb_secret_` credential.
 - [ ] APK installs on the actual Android phones intended for the pilot.
 - [ ] App opens, signs in, resumes, and relaunches without crashing.
 
 ## 4. Owner and employee onboarding
+
+> **21 Sep 2026:** dedicated production Test Manager onboarding was intentionally deferred. Backend role controls and invite lifecycle tests remain the evidence base until a dedicated manager account is created and the UI smoke test is performed.
 
 - [ ] Owner registration creates the correct store and owner profile on the pilot environment.
 - [ ] `current_user_store_id()` resolves the correct store UUID.
@@ -152,6 +164,6 @@ Automated database coverage now exercises these controls, but repeat the user-vi
 - PDF receipts/statements depend on compatible Android sharing/printing apps.
 - Notifications are currently in-app rather than a complete push-notification/alerting system.
 - Profit reporting depends on accurate buying-price data.
-- Supabase leaked-password screening is unavailable on the current Free plan; strong app-side password rules are only a compensating control.
+- Supabase leaked-password screening is unavailable on the current Free plan and is an accepted controlled-pilot limitation; strong app-side password rules are only a compensating control.
 - Debug-signed validation APKs are for controlled testing and normally cannot upgrade in place to a differently signed production APK.
-- Controlled-pilot technical gates are strong, but unrestricted production remains blocked by the unchecked real-device pilot, Auth configuration/plan decision, first live encrypted backup, monitoring/alerts, and protected signing requirements above.
+- Controlled-pilot technical gates are strong. Unrestricted production still requires the unchecked real-device pilot, remaining Auth configuration checks, first live encrypted backup, monitoring/alerts, and protected signing requirements above. The Free-plan leaked-password warning is documented separately as an accepted limitation rather than silently treated as cleared.
