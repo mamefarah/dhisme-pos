@@ -21,10 +21,48 @@ jobs:
     env:
       GRADLE_OPTS: -Dorg.gradle.vfs.watch=false
       ORG_GRADLE_PROJECT_validationBuild: "true"
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Reject privileged Supabase keys in client builds
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::SUPABASE_ANON_KEY is missing."
+            exit 1
+          fi
+          case "$SUPABASE_ANON_KEY" in
+            sb_publishable_*)
+              ;;
+            sb_secret_*)
+              echo "::error::SUPABASE_ANON_KEY contains a privileged sb_secret_ key. Mobile builds must use a publishable key or legacy anon key."
+              exit 1
+              ;;
+            eyJ*)
+              python - <<'PY'
+          import base64, json, os, sys
+          key = os.environ["SUPABASE_ANON_KEY"]
+          try:
+              payload = key.split(".")[1]
+              payload += "=" * (-len(payload) % 4)
+              role = json.loads(base64.urlsafe_b64decode(payload).decode()).get("role")
+          except Exception:
+              print("::error::SUPABASE_ANON_KEY is not a valid legacy JWT.", file=sys.stderr)
+              sys.exit(1)
+          if role != "anon":
+              print("::error::Legacy Supabase client JWT must have role=anon; privileged service-role keys are forbidden.", file=sys.stderr)
+              sys.exit(1)
+          PY
+              ;;
+            *)
+              echo "::error::SUPABASE_ANON_KEY must be an sb_publishable_ key or a legacy anon JWT."
+              exit 1
+              ;;
+          esac
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -77,8 +115,8 @@ jobs:
         run: |
           set -euo pipefail
           flutter build apk --release \
-            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
           cat > build/app/outputs/flutter-apk/BUILD_CHANNEL.txt <<'EOF'
           NON-PRODUCTION VALIDATION BUILD
           RELEASE MODE / DEBUG SIGNING
