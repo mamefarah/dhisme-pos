@@ -59,7 +59,7 @@ The signing keystore is a critical business asset.
 Configure these repository secrets before running the production workflow:
 
 - `SUPABASE_URL`
-- `SUPABASE_ANON_KEY` — the current publishable/legacy client key used by the app build; never use `service_role`.
+- `SUPABASE_ANON_KEY` — client-key slot only: use an `sb_publishable_...` key or legacy anon JWT (`role=anon`). Never use an `sb_secret_...` key or legacy `service_role` JWT. Both Android workflows fail before compilation if a privileged key is supplied.
 - `ANDROID_KEYSTORE_BASE64`
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_STORE_PASSWORD`
