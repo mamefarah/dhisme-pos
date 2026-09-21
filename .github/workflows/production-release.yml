@@ -42,6 +42,38 @@ jobs:
           done
           test "$missing" -eq 0
 
+      - name: Reject privileged Supabase keys in client builds
+        run: |
+          set -euo pipefail
+          case "$SUPABASE_ANON_KEY" in
+            sb_publishable_*)
+              ;;
+            sb_secret_*)
+              echo "::error::SUPABASE_ANON_KEY contains a privileged sb_secret_ key. Production client builds must use a publishable key or legacy anon key."
+              exit 1
+              ;;
+            eyJ*)
+              python - <<'PY'
+          import base64, json, os, sys
+          key = os.environ["SUPABASE_ANON_KEY"]
+          try:
+              payload = key.split(".")[1]
+              payload += "=" * (-len(payload) % 4)
+              role = json.loads(base64.urlsafe_b64decode(payload).decode()).get("role")
+          except Exception:
+              print("::error::SUPABASE_ANON_KEY is not a valid legacy JWT.", file=sys.stderr)
+              sys.exit(1)
+          if role != "anon":
+              print("::error::Legacy Supabase client JWT must have role=anon; privileged service-role keys are forbidden.", file=sys.stderr)
+              sys.exit(1)
+          PY
+              ;;
+            *)
+              echo "::error::SUPABASE_ANON_KEY must be an sb_publishable_ key or a legacy anon JWT."
+              exit 1
+              ;;
+          esac
+
       - name: Set up Java
         uses: actions/setup-java@v5
         with:

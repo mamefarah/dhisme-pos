@@ -15,6 +15,8 @@ Targets non-technical store owners and sellers. Keep everything simple and mobil
   ```
 - The **service_role key**, **JWT secret**, and **database password** must never appear in mobile app code. They belong only in server-side scripts or Supabase dashboard — never in a Flutter build.
 - GitHub Actions reads these from repository secrets: `SUPABASE_URL` and `SUPABASE_ANON_KEY`. Do not change their names or inject them any other way.
+- `SUPABASE_ANON_KEY` is a client-key slot only: it may contain an `sb_publishable_...` key or a legacy JWT whose payload role is exactly `anon`. **Never** put an `sb_secret_...` key or legacy `service_role` JWT in this secret. Validation and production workflows must fail before compiling if a privileged key is supplied.
+- If a privileged Supabase key is ever found inside an APK/AAB or other client artifact, treat it as compromised: remove exposed artifacts, rotate/revoke the key in Supabase, replace the GitHub client-key secret with a publishable/anon key, and rebuild before distribution.
 - Never print, log, or expose secret values anywhere in the codebase.
 
 ---
