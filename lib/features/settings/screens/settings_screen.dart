@@ -4,6 +4,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/models/app_profile.dart';
 import '../../employees/screens/employees_screen.dart';
 import '../../expenses/screens/expenses_screen.dart';
+import '../../guides/screens/guides_screen.dart';
 import '../../products/screens/stock_reconciliation_screen.dart';
 import '../../reports/screens/reports_screen.dart';
 import 'store_settings_screen.dart';
@@ -38,6 +39,16 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: Text(context.tr('Soomaali / English', 'English / Somali')),
                 value: AppLanguage.instance.isSomali,
                 onChanged: (v) => AppLanguage.instance.setLanguage(v ? 'so' : 'en'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.menu_book_outlined),
+                title: Text(context.tr('Sida ay u shaqeyso', 'How it works')),
+                subtitle: Text(context.tr('Hage fudud oo ku saabsan iibka, iibsiga, deynta iyo xidhidhka', 'Simple guides for sales, purchases, credit and closing')),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GuidesScreen(profile: profile))),
               ),
             ),
             const SizedBox(height: 12),
